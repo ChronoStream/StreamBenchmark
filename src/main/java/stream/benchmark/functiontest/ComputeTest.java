@@ -6,9 +6,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.TreeMap;
 
-import stream.benchmark.bolt.QueryBolt.BuyerPrice;
-import stream.benchmark.bolt.QueryBolt.ItemPrice;
-
 public class ComputeTest {
 	public static class BuyerPrice {
 		public BuyerPrice(String buyer_id, int price) {
