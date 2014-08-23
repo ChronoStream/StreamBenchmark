@@ -3,10 +3,10 @@ package stream.benchmark.spout;
 import java.util.Map;
 import java.util.Random;
 
-import stream.benchmark.nexmark.OpenAuctions;
-import stream.benchmark.nexmark.PersonGen;
-import stream.benchmark.nexmark.Persons;
-import stream.benchmark.nexmark.SimpleCalendar;
+import stream.benchmark.relation.OpenAuctions;
+import stream.benchmark.relation.PersonGen;
+import stream.benchmark.relation.Persons;
+import stream.benchmark.relation.SimpleCalendar;
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
