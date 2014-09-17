@@ -1,4 +1,3 @@
-package stream.benchmark.relation;
 /*  
    NEXMark Generator -- Niagara Extension to XMark Data Generator
 
@@ -30,6 +29,8 @@ package stream.benchmark.relation;
    Contract No. N66001-99-1-8098.
 
 */
+
+package stream.benchmark.relation;
 
 import java.io.Serializable;
 import java.util.*;

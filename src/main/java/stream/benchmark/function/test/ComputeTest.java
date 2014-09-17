@@ -1,4 +1,4 @@
-package stream.benchmark.functiontest;
+package stream.benchmark.function.test;
 
 import java.util.Comparator;
 import java.util.HashMap;

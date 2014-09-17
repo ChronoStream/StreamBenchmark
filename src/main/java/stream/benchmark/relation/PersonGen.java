@@ -55,7 +55,8 @@ public class PersonGen implements Serializable{
 	
 
         int ict = m_rnd.nextInt(BigValueGen.NUM_CITIES); // city
-        int icn = (m_rnd.nextInt(4) != 0) ? 0 :
+        // 40% to be U.S.
+        int icn = (m_rnd.nextInt(5) >= 3) ? 0 :
             m_rnd.nextInt(BigValueGen.NUM_COUNTRIES); 
         int ipv = (icn == 0) ? m_rnd.nextInt(BigValueGen.NUM_PROVINCES) :
             m_rnd.nextInt(LastnamesGen.NUM_LASTNAMES);  // provinces are really states

@@ -76,6 +76,7 @@ public class NexmarkSpout extends BaseRichSpout {
 		StringBuilder myb = new StringBuilder();
 		cal.incrementTime();
 		p.generateValues(); // person object is reusable now
+		//0, 1, 2, 3, ...
 		myb.append(persons.getNewId());
 		myb.append(",");
 		myb.append(p.m_stName);
@@ -117,13 +118,13 @@ public class NexmarkSpout extends BaseRichSpout {
 	}
 
 	String generateBid() {
-		// schema: auction_id, datetime, person_id, price
+		// schema: auction_id, date_time, person_id, price
 		StringBuilder myb = new StringBuilder();
 		cal.incrementTime();
 		long itemId = openAuctions.getExistingId();
 		myb.append(itemId);
 		myb.append(",");
-		myb.append(cal.getTimeInSecs());// here, datetime is in second;
+		myb.append(cal.getTimeInSecs());// here, date time is in second;
 		myb.append(",");
 		myb.append(persons.getExistingId());
 		myb.append(",");
