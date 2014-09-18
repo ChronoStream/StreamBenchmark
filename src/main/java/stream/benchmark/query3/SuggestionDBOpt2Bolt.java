@@ -17,6 +17,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
+//hold person in heap.
 public class SuggestionDBOpt2Bolt extends BaseRichBolt {
 	private static final long serialVersionUID = 1L;
 
@@ -29,6 +30,7 @@ public class SuggestionDBOpt2Bolt extends BaseRichBolt {
 
 	Map<String, PersonInfo> personMap = new HashMap<String, PersonInfo>();
 	Map<String, PersonInfo> personTmpMap = new HashMap<String, PersonInfo>();
+
 	private Connection connection = null;
 	private Statement statement = null;
 	private PreparedStatement personInsertion = null;
@@ -59,47 +61,7 @@ public class SuggestionDBOpt2Bolt extends BaseRichBolt {
 				e.printStackTrace();
 			}
 			if (begin_time > secondPoint) {
-				try {
-					//filter here
-					for(String person_id : personMap.keySet()){
-						if(personMap.get(person_id).country.equals("United States")){
-							personTmpMap.put(person_id, personMap.get(person_id));
-						}
-					}
-					System.out.println("person tmp map size="+personTmpMap.size());
-					for(String person_id : personTmpMap.keySet()){
-						PersonInfo person = personTmpMap.get(person_id);
-						personTmpInsertion.setString(1, person_id);
-						personTmpInsertion.setString(2, person.city);
-						personTmpInsertion.setString(3, person.state);
-						personTmpInsertion.setString(4, person.country);
-						personTmpInsertion.addBatch();
-					}
-					personTmpInsertion.executeBatch();
-					
-					auctionInsertion.executeBatch();
-					// personInsertion.executeBatch();
-					joinTables.setLong(1, firstPoint);
-					ResultSet result = joinTables.executeQuery();
-					// person_id, auction_id, city, state, country, category
-					while (result.next()) {
-						String res_person_id = result.getString(1);
-						String res_auction_id = result.getString(2);
-						String res_city = result.getString(3);
-						String res_state = result.getString(4);
-						String res_country = result.getString(5);
-						int res_category = result.getInt(6);
-						_collector.emit(new Values(res_person_id,
-								res_auction_id, res_city, res_state,
-								res_country, res_category, emitCount));
-					}
-					//personTmpDeletion.executeUpdate();
-					personTmpMap.clear();
-					personMap.clear();
-					
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				processQuery();
 				firstPoint += slidingInterval;
 				secondPoint += slidingInterval;
 				emitCount += 1;
@@ -119,7 +81,7 @@ public class SuggestionDBOpt2Bolt extends BaseRichBolt {
 				personInsertion.setString(2, city);
 				personInsertion.setString(3, state);
 				personInsertion.setString(4, country);
-				personInsertion.addBatch();
+				// personInsertion.addBatch();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -139,6 +101,54 @@ public class SuggestionDBOpt2Bolt extends BaseRichBolt {
 				"country", "category", "emitcount"));
 	}
 
+	boolean isFirstTime = true;
+
+	protected void processQuery() {
+		try {
+			if (isFirstTime) {
+				// filter here
+				for (String person_id : personMap.keySet()) {
+					if (personMap.get(person_id).country
+							.equals("United States")) {
+						personTmpMap.put(person_id, personMap.get(person_id));
+					}
+				}
+				for (String person_id : personTmpMap.keySet()) {
+					PersonInfo person = personTmpMap.get(person_id);
+					personTmpInsertion.setString(1, person_id);
+					personTmpInsertion.setString(2, person.city);
+					personTmpInsertion.setString(3, person.state);
+					personTmpInsertion.setString(4, person.country);
+					personTmpInsertion.addBatch();
+				}
+				personTmpInsertion.executeBatch();
+				isFirstTime=false;
+			}
+
+			auctionInsertion.executeBatch();
+			// personInsertion.executeBatch();
+			joinTables.setLong(1, firstPoint);
+			ResultSet result = joinTables.executeQuery();
+			// person_id, auction_id, city, state, country, category
+			while (result.next()) {
+				String res_person_id = result.getString(1);
+				String res_auction_id = result.getString(2);
+				String res_city = result.getString(3);
+				String res_state = result.getString(4);
+				String res_country = result.getString(5);
+				int res_category = result.getInt(6);
+				_collector.emit(new Values(res_person_id, res_auction_id,
+						res_city, res_state, res_country, res_category,
+						emitCount));
+			}
+			// personTmpDeletion.executeUpdate();
+			// personTmpMap.clear();
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
 	protected void databaseInit() {
 		try {
 			connection = DriverManager.getConnection(
@@ -147,36 +157,37 @@ public class SuggestionDBOpt2Bolt extends BaseRichBolt {
 			statement.executeUpdate("drop table persontable");
 			statement.executeUpdate("drop table auctiontable");
 			statement.executeUpdate("drop table persontmptable");
-			//create persontable.
+			// create persontable.
 			statement
 					.executeUpdate("create table persontable"
 							+ "(person_id varchar(20), city varchar(20), province varchar(20), country varchar(30)) "
 							+ "engine=memory");
 			statement
 					.executeUpdate("create index personindex on persontable(person_id)");
-			//create auctiontable
+			// create auctiontable
 			statement
 					.executeUpdate("create table auctiontable"
 							+ "(seller varchar(20), auction_id varchar(20), category int, begin_time bigint) "
 							+ "engine=memory");
 			statement
 					.executeUpdate("create index auctionindex on auctiontable(seller)");
-			//create persontmptable
+			// create persontmptable
 			statement
 					.execute("create table persontmptable"
 							+ "(person_id varchar(20), city varchar(20), province varchar(20), country varchar(30)) "
 							+ "engine=memory");
 			statement
 					.executeUpdate("create index persontmpindex on persontmptable(person_id)");
-			//insertion statements
+			// insertion statements
 			personInsertion = connection
 					.prepareStatement("insert into persontable values(?, ?, ?, ?)");
 			auctionInsertion = connection
 					.prepareStatement("insert into auctiontable values(?, ?, ?, ?)");
 			personTmpInsertion = connection
 					.prepareStatement("insert into persontmptable values(?, ?, ?, ?)");
-			personTmpDeletion = connection.prepareStatement("delete from persontmptable");
-			//join statement
+			personTmpDeletion = connection
+					.prepareStatement("delete from persontmptable");
+			// join statement
 			joinTables = connection
 					.prepareStatement("select person_id, auction_id, city, province, country, category "
 							+ "from "

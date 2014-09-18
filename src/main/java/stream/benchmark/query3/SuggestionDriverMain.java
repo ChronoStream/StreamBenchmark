@@ -11,7 +11,7 @@ public class SuggestionDriverMain {
 	public static void main(String[] args) throws Exception {
 		TopologyBuilder builder = new TopologyBuilder();
 		builder.setSpout("spout", new NexmarkSpout());
-		BoltDeclarer suggestion=builder.setBolt("query", new SuggestionDBBolt());
+		BoltDeclarer suggestion=builder.setBolt("query", new SuggestionDBOpt1Bolt());
 		suggestion.globalGrouping("spout", "auction");
 		suggestion.globalGrouping("spout", "person");
 		

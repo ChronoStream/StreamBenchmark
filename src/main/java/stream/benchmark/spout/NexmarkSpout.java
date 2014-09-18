@@ -39,7 +39,7 @@ public class NexmarkSpout extends BaseRichSpout {
 	public void nextTuple() {
 		if (isFirst == true) {
 			// populate the stream. generate 50 persons and 50 auctions.
-			for (int i = 0; i < 50; i++) {
+			for (int i = 0; i < 1000; i++) {
 				String str = generatePerson();
 				_collector.emit("person", new Values(str));
 			}
@@ -52,10 +52,10 @@ public class NexmarkSpout extends BaseRichSpout {
 			// now go into a loop generating bids and persons and so on
 			// generating a person approximately 10th time will give is 10
 			// items/person since we generate on average one bid per loop
-			if (rnd.nextInt(10) == 0) {
-				String str = generatePerson();
-				_collector.emit("person", new Values(str));
-			}
+//			if (rnd.nextInt(10) == 0) {
+//				String str = generatePerson();
+//				_collector.emit("person", new Values(str));
+//			}
 			// want on average 1 item and 10 bids
 			int numItems = rnd.nextInt(3); // should average 1
 			for (int i = 0; i < numItems; ++i) {

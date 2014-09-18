@@ -1,12 +1,10 @@
 package stream.benchmark.query3;
 
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 import stream.benchmark.query3.SuggestionState.AuctionInfo;
-import stream.benchmark.query3.SuggestionState.PersonInfo;
+import stream.benchmark.query3.SuggestionState.PersonTreeInfo;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -15,7 +13,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class SuggestionHeapBolt extends BaseRichBolt {
+public class SuggestionHeapTreeBolt extends BaseRichBolt {
 	private static final long serialVersionUID = 1L;
 
 	private int emitCount = 0;
@@ -24,13 +22,11 @@ public class SuggestionHeapBolt extends BaseRichBolt {
 	private long secondPoint = slidingInterval;
 
 	OutputCollector _collector;
-	// record person information, infrequently updated.
-	Map<String, PersonInfo> personMap = new HashMap<String, PersonInfo>();
-	// record auction information, infrequently updated.
-	Map<String, List<AuctionInfo>> auctionMap = new HashMap<String, List<AuctionInfo>>();
+	// record person tree information, infrequently updated.
+	Map<String, PersonTreeInfo> personTreeMap = new HashMap<String, PersonTreeInfo>();
 
 	private long measureBeginTime, measureElapsedTime;
-
+	
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);
 		String[] fields = tuple.split(",");
@@ -43,20 +39,16 @@ public class SuggestionHeapBolt extends BaseRichBolt {
 			long begin_time = Long.valueOf(fields[3]);
 			AuctionInfo auctionInfo = new AuctionInfo(auction_id, category,
 					begin_time);
-			if (!auctionMap.containsKey(seller_id)) {
-				auctionMap.put(seller_id, new LinkedList<AuctionInfo>());
-			}
-			auctionMap.get(seller_id).add(auctionInfo);
+			personTreeMap.get(seller_id).auctionList.add(auctionInfo);
 
 			if (begin_time > secondPoint) {
 				processQuery();
 				firstPoint += slidingInterval;
 				secondPoint += slidingInterval;
 				emitCount += 1;
-				measureElapsedTime = System.currentTimeMillis()
-						- measureBeginTime;
-				System.out.println("elapsed time=" + measureElapsedTime + "ms");
-				measureBeginTime = System.currentTimeMillis();
+				measureElapsedTime=System.currentTimeMillis()-measureBeginTime;
+				System.out.println("elapsed time="+measureElapsedTime+"ms");
+				measureBeginTime=System.currentTimeMillis();
 			}
 		} else if (streamname == "person") {
 			// schema: person_id, street_name, email, city, state, country
@@ -64,23 +56,21 @@ public class SuggestionHeapBolt extends BaseRichBolt {
 			String city = fields[3];
 			String state = fields[4];
 			String country = fields[5];
-			PersonInfo personInfo = new PersonInfo(city, state, country);
-			personMap.put(person_id, personInfo);
+			PersonTreeInfo personTreeInfo = new PersonTreeInfo(city, state, country);
+			personTreeMap.put(person_id, personTreeInfo);
 		}
 	}
 
 	protected void processQuery() {
-		for (String person_id : personMap.keySet()) {
-			if (personMap.get(person_id).country.equals("United States")
-					&& auctionMap.containsKey(person_id)) {
-				List<AuctionInfo> tmpAuctionList = auctionMap.get(person_id);
-				PersonInfo tmpPerson = personMap.get(person_id);
-				for (AuctionInfo tmpAuction : tmpAuctionList) {
+		for (String person_id : personTreeMap.keySet()) {
+			if (personTreeMap.get(person_id).country.equals("United States")) {
+				PersonTreeInfo tmpPersonTree = personTreeMap.get(person_id);
+				for(AuctionInfo tmpAuction : tmpPersonTree.auctionList){
 					if (tmpAuction.begin_time > firstPoint
 							&& tmpAuction.category % 10 == 0) {
 						_collector.emit(new Values(person_id,
-								tmpAuction.auction_id, tmpPerson.city,
-								tmpPerson.state, tmpPerson.country,
+								tmpAuction.auction_id, tmpPersonTree.city,
+								tmpPersonTree.state, tmpPersonTree.country,
 								tmpAuction.category, emitCount));
 					}
 				}
@@ -91,7 +81,7 @@ public class SuggestionHeapBolt extends BaseRichBolt {
 	public void prepare(Map arg0, TopologyContext arg1,
 			OutputCollector collector) {
 		_collector = collector;
-		measureBeginTime = System.currentTimeMillis();
+		measureBeginTime=System.currentTimeMillis();
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {

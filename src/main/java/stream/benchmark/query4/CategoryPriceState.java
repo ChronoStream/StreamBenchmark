@@ -1,5 +1,8 @@
 package stream.benchmark.query4;
 
+import java.util.LinkedList;
+import java.util.List;
+
 class CategoryPriceState {
 	protected static class AuctionInfo {
 		public AuctionInfo(int category, long begin_time,
@@ -12,6 +15,21 @@ class CategoryPriceState {
 		int category;
 		long begin_time;
 		long end_time;
+	}
+	
+	protected static class AuctionTreeInfo {
+		public AuctionTreeInfo(int category, long begin_time,
+				long end_time) {
+			this.category = category;
+			this.begin_time = begin_time;
+			this.end_time = end_time;
+			this.bidList = new LinkedList<BidInfo>();
+		}
+
+		int category;
+		long begin_time;
+		long end_time;
+		List<BidInfo> bidList;
 	}
 
 	protected static class BidInfo {

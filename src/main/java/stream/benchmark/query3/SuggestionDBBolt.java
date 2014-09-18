@@ -48,29 +48,12 @@ public class SuggestionDBBolt extends BaseRichBolt {
 				auctionInsertion.setString(2, auction_id);
 				auctionInsertion.setInt(3, category);
 				auctionInsertion.setLong(4, begin_time);
-				auctionInsertion.executeUpdate();
+				auctionInsertion.addBatch();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 			if (begin_time > secondPoint) {
-				try {
-					joinTables.setLong(1, firstPoint);
-					ResultSet result = joinTables.executeQuery();
-					// person_id, auction_id, city, state, country, category
-					while (result.next()) {
-						String res_person_id = result.getString(1);
-						String res_auction_id = result.getString(2);
-						String res_city = result.getString(3);
-						String res_state = result.getString(4);
-						String res_country = result.getString(5);
-						int res_category = result.getInt(6);
-						_collector.emit(new Values(res_person_id,
-								res_auction_id, res_city, res_state,
-								res_country, res_category, emitCount));
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				processQuery();
 				firstPoint += slidingInterval;
 				secondPoint += slidingInterval;
 				emitCount += 1;
@@ -89,13 +72,36 @@ public class SuggestionDBBolt extends BaseRichBolt {
 				personInsertion.setString(2, city);
 				personInsertion.setString(3, state);
 				personInsertion.setString(4, country);
-				personInsertion.executeUpdate();
+				personInsertion.addBatch();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
 	}
 
+	protected void processQuery(){
+		try {
+			auctionInsertion.executeBatch();
+			personInsertion.executeBatch();
+			joinTables.setLong(1, firstPoint);
+			ResultSet result = joinTables.executeQuery();
+			// person_id, auction_id, city, state, country, category
+			while (result.next()) {
+				String res_person_id = result.getString(1);
+				String res_auction_id = result.getString(2);
+				String res_city = result.getString(3);
+				String res_state = result.getString(4);
+				String res_country = result.getString(5);
+				int res_category = result.getInt(6);
+				_collector.emit(new Values(res_person_id,
+						res_auction_id, res_city, res_state,
+						res_country, res_category, emitCount));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
 	public void prepare(Map arg0, TopologyContext arg1,
 			OutputCollector collector) {
 		_collector = collector;
