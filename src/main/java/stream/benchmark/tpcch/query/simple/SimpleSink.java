@@ -1,4 +1,4 @@
-package stream.benchmark.tpch.query.simple;
+package stream.benchmark.tpcch.query.simple;
 
 import java.util.Map;
 
