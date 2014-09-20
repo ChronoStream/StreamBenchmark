@@ -1,4 +1,4 @@
-package stream.benchmark.tpcch.spout;
+package stream.benchmark.tpcc.spout;
 
 import java.util.Map;
 import java.util.Set;
@@ -10,7 +10,7 @@ import backtype.storm.topology.base.BaseRichSpout;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
 
-public class TpcchSpout extends BaseRichSpout {
+public class TpccSpout extends BaseRichSpout {
 	private static final long serialVersionUID = 1L;
 
 	private SpoutOutputCollector _collector;
@@ -25,11 +25,11 @@ public class TpcchSpout extends BaseRichSpout {
 	private Set<Integer> _originalRows;
 	private Set<Integer> _selectedRows;
 
-	public TpcchSpout() {
+	public TpccSpout() {
 		_scaleParams = new ScaleParams(4, 1);
 	}
 
-	public TpcchSpout(int warehouses, double scalefactor) {
+	public TpccSpout(int warehouses, double scalefactor) {
 		_scaleParams = new ScaleParams(warehouses, scalefactor);
 	}
 

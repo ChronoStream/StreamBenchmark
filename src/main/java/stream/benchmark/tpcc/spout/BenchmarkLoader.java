@@ -1,4 +1,4 @@
-package stream.benchmark.tpcch.spout;
+package stream.benchmark.tpcc.spout;
 
 public class BenchmarkLoader {
 
