@@ -1,4 +1,4 @@
-package stream.benchmark.tpcch.sandbox;
+package stream.benchmark.tpcch.query4;
 
 import java.util.Map;
 
@@ -9,7 +9,7 @@ import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 
-public class Q2HeapBolt extends BaseRichBolt {
+public class Q4HeapBolt extends BaseRichBolt {
 	private static final long serialVersionUID = 1L;
 
 	private OutputCollector _collector;

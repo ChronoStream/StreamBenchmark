@@ -1,9 +1,9 @@
-package stream.benchmark.tpcch.sandbox;
+package stream.benchmark.tpcch.query3;
 
 import java.util.List;
 import java.util.Map;
 
-import stream.benchmark.tpcch.sandbox.Q3State.OrderState;
+import stream.benchmark.tpcch.query3.Q3State.OrderState;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;

@@ -70,19 +70,40 @@ public class SuggestionHeapBolt extends BaseRichBolt {
 	}
 
 	protected void processQuery() {
+//		for (String person_id : personMap.keySet()) {
+//			if (personMap.get(person_id).country.equals("United States")
+//					&& auctionMap.containsKey(person_id)) {
+//				List<AuctionInfo> tmpAuctionList = auctionMap.get(person_id);
+//				PersonInfo tmpPerson = personMap.get(person_id);
+//				for (AuctionInfo tmpAuction : tmpAuctionList) {
+//					if (tmpAuction.begin_time > firstPoint
+//							&& tmpAuction.category % 10 == 0) {
+//						_collector.emit(new Values(person_id,
+//								tmpAuction.auction_id, tmpPerson.city,
+//								tmpPerson.state, tmpPerson.country,
+//								tmpAuction.category, emitCount));
+//					}
+//				}
+//			}
+//		}
+		
+		List<String> tmpPersonIds = new LinkedList<String>();
 		for (String person_id : personMap.keySet()) {
 			if (personMap.get(person_id).country.equals("United States")
 					&& auctionMap.containsKey(person_id)) {
-				List<AuctionInfo> tmpAuctionList = auctionMap.get(person_id);
-				PersonInfo tmpPerson = personMap.get(person_id);
-				for (AuctionInfo tmpAuction : tmpAuctionList) {
-					if (tmpAuction.begin_time > firstPoint
-							&& tmpAuction.category % 10 == 0) {
-						_collector.emit(new Values(person_id,
-								tmpAuction.auction_id, tmpPerson.city,
-								tmpPerson.state, tmpPerson.country,
-								tmpAuction.category, emitCount));
-					}
+				tmpPersonIds.add(person_id);
+			}
+		}
+		for (String person_id : tmpPersonIds) {
+			List<AuctionInfo> tmpAuctionList = auctionMap.get(person_id);
+			PersonInfo tmpPerson = personMap.get(person_id);
+			for (AuctionInfo tmpAuction : tmpAuctionList) {
+				if (tmpAuction.begin_time > firstPoint
+						&& tmpAuction.category % 10 == 0) {
+					_collector.emit(new Values(person_id,
+							tmpAuction.auction_id, tmpPerson.city,
+							tmpPerson.state, tmpPerson.country,
+							tmpAuction.category, emitCount));
 				}
 			}
 		}

@@ -6,12 +6,12 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import stream.benchmark.nexmark.query3.SuggestionState.AuctionInfo;
-import stream.benchmark.nexmark.query3.SuggestionState.PersonInfo;
+import stream.benchmark.nexmark.query3.SuggestionState.PersonTreeInfo;
 import stream.benchmark.toolkits.MemoryReport;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
@@ -30,15 +30,15 @@ public class SuggestionCacheBolt extends BaseRichBolt {
 	private long secondPoint = slidingInterval;
 
 	OutputCollector _collector;
-	// record person information, infrequently updated.
-	Map<String, PersonInfo> personMap = new HashMap<String, PersonInfo>();
-	// record auction information, infrequently updated.
-	Map<String, List<AuctionInfo>> auctionMap = new HashMap<String, List<AuctionInfo>>();
+	// record person tree information, infrequently updated.
+	Map<String, PersonTreeInfo> personTreeMap = new HashMap<String, PersonTreeInfo>();
 
 	private Connection connection = null;
 	private Statement statement = null;
 	private PreparedStatement personInsertion = null;
 	private PreparedStatement auctionInsertion = null;
+
+	ExecutorService executorService = null;
 
 	private long measureBeginTime, measureElapsedTime;
 
@@ -63,15 +63,55 @@ public class SuggestionCacheBolt extends BaseRichBolt {
 			}
 			AuctionInfo auctionInfo = new AuctionInfo(auction_id, category,
 					begin_time);
-			if (!auctionMap.containsKey(seller_id)) {
-				auctionMap.put(seller_id, new LinkedList<AuctionInfo>());
-			}
-			auctionMap.get(seller_id).add(auctionInfo);
+			personTreeMap.get(seller_id).auctionList.add(auctionInfo);
 
 			if (begin_time > secondPoint) {
 				processQuery();
 				firstPoint += slidingInterval;
 				secondPoint += slidingInterval;
+
+				if (emitCount != 0 && emitCount % 20 == 0) {
+					System.out.println("emit count=" + emitCount);
+					MemoryReport.reportStatus();
+					// checkpoint here!
+					try {
+						personInsertion.executeBatch();
+						auctionInsertion.executeBatch();
+
+						// personInsertionFuture = executorService
+						// .submit(new Callable() {
+						//
+						// public Object call() throws Exception {
+						// personInsertion.executeBatch();
+						// return true;
+						// }
+						//
+						// });
+						//
+						// Future auctionInsertionFuture = executorService
+						// .submit(new Callable() {
+						//
+						// public Object call() throws Exception {
+						// auctionInsertion.executeBatch();
+						// return true;
+						// }
+						//
+						// });
+						// executorService.execute(new Runnable() {
+						// public void run() {
+						// try {
+						// auctionInsertion.executeBatch();
+						// } catch (SQLException e) {
+						// e.printStackTrace();
+						// }
+						// }
+						// });
+
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+
 				emitCount += 1;
 				measureElapsedTime = System.currentTimeMillis()
 						- measureBeginTime;
@@ -94,34 +134,22 @@ public class SuggestionCacheBolt extends BaseRichBolt {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			PersonInfo personInfo = new PersonInfo(city, state, country);
-			personMap.put(person_id, personInfo);
-		}
-		if (emitCount != 0 && emitCount % 2000 == 0) {
-			System.out.println("emit count=" + emitCount);
-			MemoryReport.reportStatus();
-			// checkpoint here!
-			try {
-				personInsertion.executeBatch();
-				auctionInsertion.executeBatch();
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
+			PersonTreeInfo personTreeInfo = new PersonTreeInfo(city, state,
+					country);
+			personTreeMap.put(person_id, personTreeInfo);
 		}
 	}
 
 	protected void processQuery() {
-		for (String person_id : personMap.keySet()) {
-			if (personMap.get(person_id).country.equals("United States")
-					&& auctionMap.containsKey(person_id)) {
-				List<AuctionInfo> tmpAuctionList = auctionMap.get(person_id);
-				PersonInfo tmpPerson = personMap.get(person_id);
-				for (AuctionInfo tmpAuction : tmpAuctionList) {
+		for (String person_id : personTreeMap.keySet()) {
+			if (personTreeMap.get(person_id).country.equals("United States")) {
+				PersonTreeInfo tmpPersonTree = personTreeMap.get(person_id);
+				for (AuctionInfo tmpAuction : tmpPersonTree.auctionList) {
 					if (tmpAuction.begin_time > firstPoint
 							&& tmpAuction.category % 10 == 0) {
 						_collector.emit(new Values(person_id,
-								tmpAuction.auction_id, tmpPerson.city,
-								tmpPerson.state, tmpPerson.country,
+								tmpAuction.auction_id, tmpPersonTree.city,
+								tmpPersonTree.state, tmpPersonTree.country,
 								tmpAuction.category, emitCount));
 					}
 				}
@@ -134,6 +162,7 @@ public class SuggestionCacheBolt extends BaseRichBolt {
 		_collector = collector;
 		databaseInit();
 		measureBeginTime = System.currentTimeMillis();
+		executorService = Executors.newFixedThreadPool(10);
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
@@ -153,13 +182,9 @@ public class SuggestionCacheBolt extends BaseRichBolt {
 							+ "(person_id varchar(20), city varchar(20), province varchar(20), country varchar(30)) "
 							+ "engine=memory");
 			statement
-					.executeUpdate("create index personindex on persontable(person_id)");
-			statement
 					.executeUpdate("create table auctiontable"
 							+ "(seller varchar(20), auction_id varchar(20), category int, begin_time bigint) "
 							+ "engine=memory");
-			statement
-					.executeUpdate("create index auctionindex on auctiontable(seller)");
 
 			personInsertion = connection
 					.prepareStatement("insert into persontable values(?, ?, ?, ?)");

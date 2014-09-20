@@ -70,6 +70,11 @@ public class SuggestionDBOpt1Bolt extends BaseRichBolt {
 				processQuery();
 				firstPoint += slidingInterval;
 				secondPoint += slidingInterval;
+				// checkpoint here!
+				if (emitCount != 0 && emitCount % 20 == 0) {
+					System.out.println("emit count=" + emitCount);
+				}
+				
 				emitCount += 1;
 				measureElapsedTime = System.currentTimeMillis()
 						- measureBeginTime;
@@ -146,14 +151,12 @@ public class SuggestionDBOpt1Bolt extends BaseRichBolt {
 							+ "(person_id varchar(20), city varchar(20), province varchar(20), country varchar(30)) "
 							+ "engine=memory");
 			statement
-					.executeUpdate("create index personindex on persontable(person_id)");
+					.executeUpdate("create index personindex on persontable(country)");
 			// create auctiontable
 			statement
 					.executeUpdate("create table auctiontable"
 							+ "(seller varchar(20), auction_id varchar(20), category int, begin_time bigint) "
 							+ "engine=memory");
-			statement
-					.executeUpdate("create index auctionindex on auctiontable(seller)");
 			// insertion statements
 			personInsertion = connection
 					.prepareStatement("insert into persontable values(?, ?, ?, ?)");

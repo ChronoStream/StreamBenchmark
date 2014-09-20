@@ -26,7 +26,7 @@ public class SuggestionHeapTreeBolt extends BaseRichBolt {
 	Map<String, PersonTreeInfo> personTreeMap = new HashMap<String, PersonTreeInfo>();
 
 	private long measureBeginTime, measureElapsedTime;
-	
+
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);
 		String[] fields = tuple.split(",");
@@ -46,9 +46,10 @@ public class SuggestionHeapTreeBolt extends BaseRichBolt {
 				firstPoint += slidingInterval;
 				secondPoint += slidingInterval;
 				emitCount += 1;
-				measureElapsedTime=System.currentTimeMillis()-measureBeginTime;
-				System.out.println("elapsed time="+measureElapsedTime+"ms");
-				measureBeginTime=System.currentTimeMillis();
+				measureElapsedTime = System.currentTimeMillis()
+						- measureBeginTime;
+				System.out.println("elapsed time=" + measureElapsedTime + "ms");
+				measureBeginTime = System.currentTimeMillis();
 			}
 		} else if (streamname == "person") {
 			// schema: person_id, street_name, email, city, state, country
@@ -56,7 +57,8 @@ public class SuggestionHeapTreeBolt extends BaseRichBolt {
 			String city = fields[3];
 			String state = fields[4];
 			String country = fields[5];
-			PersonTreeInfo personTreeInfo = new PersonTreeInfo(city, state, country);
+			PersonTreeInfo personTreeInfo = new PersonTreeInfo(city, state,
+					country);
 			personTreeMap.put(person_id, personTreeInfo);
 		}
 	}
@@ -65,7 +67,7 @@ public class SuggestionHeapTreeBolt extends BaseRichBolt {
 		for (String person_id : personTreeMap.keySet()) {
 			if (personTreeMap.get(person_id).country.equals("United States")) {
 				PersonTreeInfo tmpPersonTree = personTreeMap.get(person_id);
-				for(AuctionInfo tmpAuction : tmpPersonTree.auctionList){
+				for (AuctionInfo tmpAuction : tmpPersonTree.auctionList) {
 					if (tmpAuction.begin_time > firstPoint
 							&& tmpAuction.category % 10 == 0) {
 						_collector.emit(new Values(person_id,
@@ -81,7 +83,7 @@ public class SuggestionHeapTreeBolt extends BaseRichBolt {
 	public void prepare(Map arg0, TopologyContext arg1,
 			OutputCollector collector) {
 		_collector = collector;
-		measureBeginTime=System.currentTimeMillis();
+		measureBeginTime = System.currentTimeMillis();
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
