@@ -13,7 +13,7 @@ public class SimpleSink extends BaseRichBolt {
 	
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);
-		System.out.println("stream name="+tuple);
+		System.out.println("tuple="+tuple);
 	}
 
 	public void prepare(Map arg0, TopologyContext arg1, OutputCollector collector) {

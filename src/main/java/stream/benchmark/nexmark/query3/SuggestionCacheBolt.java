@@ -78,16 +78,6 @@ public class SuggestionCacheBolt extends BaseRichBolt {
 						personInsertion.executeBatch();
 						auctionInsertion.executeBatch();
 
-						// personInsertionFuture = executorService
-						// .submit(new Callable() {
-						//
-						// public Object call() throws Exception {
-						// personInsertion.executeBatch();
-						// return true;
-						// }
-						//
-						// });
-						//
 						// Future auctionInsertionFuture = executorService
 						// .submit(new Callable() {
 						//
