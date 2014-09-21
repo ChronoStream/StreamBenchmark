@@ -103,7 +103,7 @@ public class TpccSpout extends BaseRichSpout {
 					++_numEmittedCustomers;
 					return;
 				}
-				// // generate order here
+				// generate order here
 				if (_numEmittedOrders < _scaleParams._numCustomersPerDistrict) {
 					int o_id = _numEmittedOrders + 1;
 					int o_ol_cnt = BenchmarkRandom.getNumber(

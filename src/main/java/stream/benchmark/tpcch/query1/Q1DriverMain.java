@@ -13,7 +13,7 @@ public class Q1DriverMain {
 		TopologyBuilder builder = new TopologyBuilder();
 		builder.setSpout("spout", new TpcchSpout());
 		BoltDeclarer query = builder.setBolt("query", new Q1HeapBolt());
-		query.globalGrouping("spout", "order_line");
+		query.globalGrouping("spout", "orderline");
 		query.globalGrouping("spout", "trigger");
 		builder.setBolt("sink", new SimpleSink()).globalGrouping("query");
 
