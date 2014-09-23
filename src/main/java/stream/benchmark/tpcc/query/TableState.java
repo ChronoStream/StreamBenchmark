@@ -65,7 +65,7 @@ public class TableState {
 				String _city, String _state, String _zip, String _phone,
 				long _since, String _credit, double _credit_lim,
 				double _discount, double _balance, double _ytd_payment,
-				int _payment_count, int _delivery_count, String data) {
+				int _payment_count, int _delivery_count, String _data) {
 			this._id = _id;
 			this._d_id = _d_id;
 			this._w_id = _w_id;
@@ -86,7 +86,7 @@ public class TableState {
 			this._ytd_payment = _ytd_payment;
 			this._payment_count = _payment_count;
 			this._delivery_count = _delivery_count;
-			this.data = data;
+			this._data = _data;
 		}
 
 		int _id;
@@ -109,7 +109,7 @@ public class TableState {
 		double _ytd_payment;
 		int _payment_count;
 		int _delivery_count;
-		String data;
+		String _data;
 	}
 
 	protected static class HistoryState {

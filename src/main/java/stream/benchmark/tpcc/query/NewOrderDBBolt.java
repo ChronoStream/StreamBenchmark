@@ -1,7 +1,10 @@
 package stream.benchmark.tpcc.query;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +29,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class StateMachineBolt extends BaseRichBolt {
+public class NewOrderDBBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
 
@@ -52,6 +55,18 @@ public class StateMachineBolt extends BaseRichBolt {
 	private List<StockState> _stocks;
 	private Map<Integer, Map<Integer, StockState>> _stocksIndex;
 
+	private Connection _connection = null;
+	private Statement _statement = null;
+	private PreparedStatement _itemsInsertion;
+	private PreparedStatement _warehousesInsertion;
+	private PreparedStatement _districtsInsertion;
+	private PreparedStatement _customersInsertion;
+	private PreparedStatement _ordersInsertion;
+	private PreparedStatement _newordersInsertion;
+	private PreparedStatement _orderlinesInsertion;
+	private PreparedStatement _historiesInsertion;
+	private PreparedStatement _stocksInsertion;
+
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);
 		String[] fields = tuple.split(",");
@@ -62,6 +77,7 @@ public class StateMachineBolt extends BaseRichBolt {
 					fields[2], Double.valueOf(fields[3]), fields[4]);
 			_items.add(item);
 			_itemsIndex.put(item_id, item);
+			
 		} else if (streamname == "warehouse") {
 			int warehouse_id = Integer.valueOf(fields[0]);
 			WarehouseState warehouse = new WarehouseState(warehouse_id,
@@ -209,49 +225,7 @@ public class StateMachineBolt extends BaseRichBolt {
 			}
 			_historiesIndex.get(h_c_w_id).get(h_c_d_id).put(h_c_id, history);
 		} else if (streamname == "DELIVERY") {
-			int w_id = Integer.valueOf(fields[0]);
-			int o_carrier_id = Integer.valueOf(fields[1]);
-			long ol_delivery_d = Long.valueOf(fields[2]);
-			// for each district, deliver the first new_order
-			for (int d_id = 1; d_id < BenchmarkConstant.DISTRICTS_PER_WAREHOUSE + 1; ++d_id) {
-				// randomly pick a new order
-				if (_newordersIndex.get(w_id).get(d_id).size() == 0) {
-					continue;
-				}
-				// getNewOrder: no_d_id, no_w_id
-				int no_o_id = _newordersIndex.get(w_id).get(d_id).get(0);
-				// getCId: no_o_id, d_id, w_id
-				int c_id = _ordersIndex.get(w_id).get(d_id).get(no_o_id)._c_id;
-				// sumOLAmount: no_o_id, d_id, w_id
-				int sum = 0;
-				List<OrderLineState> orderlineList = _orderlinesIndex.get(w_id)
-						.get(d_id).get(no_o_id);
-				for (OrderLineState state : orderlineList) {
-					sum += state._ol_amount;
-				}
-				// deleteNewOrder : d_id, w_id, no_o_id
-				_newordersIndex.get(w_id).get(d_id).remove(0);
-				Iterator<NewOrderState> iter = _neworders.iterator();
-				while (iter.hasNext()) {
-					NewOrderState tmp = iter.next();
-					if (tmp._o_id == no_o_id) {
-						iter.remove();
-					}
-				}
-				// updateOrders : o_carrier_id, no_o_id, d_id, w_id
-				_ordersIndex.get(w_id).get(d_id).get(no_o_id)._carrier_id = o_carrier_id;
-
-				// updateOrderLine : ol_delivery_d, no_o_id, d_id, w_id
-				List<OrderLineState> tmpList = _orderlinesIndex.get(w_id)
-						.get(d_id).get(no_o_id);
-				for (OrderLineState tmp : tmpList) {
-					tmp._ol_delivery_d = ol_delivery_d;
-				}
-				// updateCustomer : ol_total, c_id, d_id, w_id
-				_customersIndex.get(w_id).get(d_id).get(c_id)._balance += sum;
-			}
 		} else if (streamname == "NEW_ORDER") {
-			System.out.println("new_order=" + tuple);
 			int w_id = Integer.valueOf(fields[0]);
 			int d_id = Integer.valueOf(fields[1]);
 			int c_id = Integer.valueOf(fields[2]);
@@ -308,7 +282,7 @@ public class StateMachineBolt extends BaseRichBolt {
 			_neworders.add(neworderState);
 			_newordersIndex.get(w_id).get(d_id).add(d_next_o_id);
 
-			List<NewOrderItemData> item_datas = new LinkedList<NewOrderItemData>();
+			List<NewOrderItemData> item_data = new LinkedList<NewOrderItemData>();
 			double total = 0;
 			for (int i = 0; i < i_ids.size(); ++i) {
 				int ol_number = i + 1;
@@ -364,79 +338,18 @@ public class StateMachineBolt extends BaseRichBolt {
 
 				_orderlinesIndex.get(w_id).get(d_id).get(d_next_o_id)
 						.add(olState);
-				item_datas.add(new NewOrderItemData(tmpItemInfo._i_name,
+				item_data.add(new NewOrderItemData(tmpItemInfo._i_name,
 						s_quantity, brand_generic, tmpItemInfo._i_price,
 						ol_amount));
 			}
 			total *= (1 - c_discount) * (1 + w_tax + d_tax);
-
+			_collector.emit(new Values("total=" + total));
 		} else if (streamname == "ORDER_STATUS") {
-
 		} else if (streamname == "PAYMENT") {
-			int w_id = Integer.valueOf(fields[0]);
-			int d_id = Integer.valueOf(fields[1]);
-			double h_amount = Integer.valueOf(fields[2]);
-			int c_w_id = Integer.valueOf(fields[3]);
-			int c_d_id = Integer.valueOf(fields[4]);
-			int c_id = Integer.valueOf(fields[5]);
-			String c_last = fields[6];
-			long h_date = Integer.valueOf(fields[7]);
-			CustomerState tmpCustomer;
-			if (c_id != -1) {
-				tmpCustomer = _customersIndex.get(c_w_id).get(c_d_id).get(c_id);
-				// get C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE
-			} else {
-				// Get the midpoint customer's id
-				List<CustomerState> customerList = new LinkedList<CustomerState>();
-				for (CustomerState entry : _customersIndex.get(c_w_id)
-						.get(c_d_id).values()) {
-					if (entry._last.equals(c_last)) {
-						customerList.add(entry);
-					}
-				}
-				tmpCustomer = customerList.get((customerList.size() - 1) / 2);
-			}
-
-			double c_balance = tmpCustomer._balance - h_amount;
-			double c_ytd_payment = tmpCustomer._ytd_payment + h_amount;
-			int c_payment_cnt = tmpCustomer._payment_count + 1;
-			String c_data = tmpCustomer._data;
-			WarehouseState tmpWarehouse = _warehousesIndex.get(w_id);
-			DistrictState tmpDistrict = _districtsIndex.get(w_id).get(d_id);
-			tmpWarehouse._ytd += h_amount;
-			tmpDistrict._ytd += h_amount;
-
-			// // Customer Credit Information
-			// if (tmpCustomer._credit == constants.BAD_CREDIT){
-			// String newData = c_id+" "+c_d_id
-			// +" "+c_w_id+" "+d_id+" "+w_id+" "+h_amount;
-			// c_data = (newData + "|" + c_data)
-			// if len(c_data) > constants.MAX_C_DATA: c_data =
-			// c_data[:constants.MAX_C_DATA]
-			// self.cursor.execute(q["updateBCCustomer"], [c_balance,
-			// c_ytd_payment, c_payment_cnt, c_data, c_w_id, c_d_id, c_id])
-			// }
-			// else{
-			// c_data = ""
-			// self.cursor.execute(q["updateGCCustomer"], [c_balance,
-			// c_ytd_payment, c_payment_cnt, c_w_id, c_d_id, c_id])
-			// }
-			// // Concatenate w_name, four spaces, d_name
-			// h_data = "%s    %s" % (warehouse[0], district[0])
-			// // Create the history record
-			// self.cursor.execute(q["insertHistory"], [c_id, c_d_id, c_w_id,
-			// d_id, w_id, h_date, h_amount, h_data])
-
 		} else if (streamname == "STOCK_LEVEL") {
-			// int w_id = Integer.valueOf(fields[0]);
-			// int d_id = Integer.valueOf(fields[1]);
-			// int threshold = Integer.valueOf(fields[2]);
-			// get order id
-			// get warehouse_id, district_id, order_id,
 		} else {
-
 		}
-		_collector.emit(new Values(streamname));
+		// _collector.emit(new Values(streamname));
 	}
 
 	public void prepare(Map arg0, TopologyContext arg1,
@@ -462,6 +375,113 @@ public class StateMachineBolt extends BaseRichBolt {
 		_historiesIndex = new HashMap<Integer, Map<Integer, Map<Integer, HistoryState>>>();
 		_stocks = new LinkedList<StockState>();
 		_stocksIndex = new HashMap<Integer, Map<Integer, StockState>>();
+		System.out.println("here...");
+		databaseInit();
+	}
+
+	protected void databaseInit() {
+		try {
+			_connection = DriverManager.getConnection(
+					"jdbc:mysql://localhost:3306/tpcc", "root", "");
+			_statement = _connection.createStatement();
+			_statement.executeUpdate("drop table warehouses");
+			_statement.executeUpdate("drop table districts");
+			_statement.executeUpdate("drop table customers");
+			_statement.executeUpdate("drop table orders");
+			_statement.executeUpdate("drop table neworders");
+			_statement.executeUpdate("drop table orderlines");
+			_statement.executeUpdate("drop table histories");
+			_statement.executeUpdate("drop table stocks");
+			_statement.executeUpdate("drop table items");
+			_statement
+					.executeUpdate("create table warehouses"
+							+ "(w_id smallint, w_name varchar(16), "
+							+ "w_street_1 varchar(32), w_street_2 varchar(32), w_city varchar(32), w_state varchar(2), w_zip varchar(9), "
+							+ "w_tax float, w_ytd float) " + "engine=memory");
+			_statement
+					.executeUpdate("create index warehousesindex on warehouses(w_id)");
+			_statement
+					.executeUpdate("create table districts"
+							+ "(d_id smallint, d_w_id smallint, d_name varchar(16), "
+							+ "d_street_1 varchar(32), d_street_2 varchar(32), d_city varchar(32), d_state varchar(2), d_zip varchar(9), "
+							+ "d_tax float, d_ytd float, d_next_o_id int) "
+							+ "engine=memory");
+			_statement
+					.executeUpdate("create index districtsindex on districts(d_w_id, d_id)");
+			_statement
+					.executeUpdate("create table items"
+							+ "(i_id int, i_im_id int, i_name varchar(32), i_price float, i_data varchar(64))  "
+							+ "engine=memory");
+			_statement.executeUpdate("create index itemsindex on items(i_id)");
+			_statement
+					.executeUpdate("create table customers"
+							+ "(c_id int, c_d_id smallint, c_w_id smallint, "
+							+ "c_first varchar(32), c_middle varchar(2), c_last varchar(32), "
+							+ "c_street_1 varchar(32), c_street_2 varchar(32), c_city varchar(32), c_state varchar(2), c_zip varchar(9), "
+							+ "c_phone varchar(32), c_since bigint, "
+							+ "c_credit varchar(2), c_credit_lim float, "
+							+ "c_discount float, c_balance float, c_ytd_payment float, c_payment_cnt int, c_delivery_cnt int, "
+							+ "c_data varchar(500)) " + "engine=memory");
+			_statement
+					.executeUpdate("create index customersindex on customers(c_w_id, c_d_id, c_id)");
+			_statement
+					.executeUpdate("create table orders"
+							+ "(o_id int, o_c_id int, o_d_id smallint, o_w_id smallint, o_entry_d bigint, o_carrier_id int, o_ol_cnt int, o_all_local int) "
+							+ "engine=memory");
+			_statement
+					.executeUpdate("create index ordersindex on orders(o_w_id, o_d_id, o_id)");
+			_statement.executeUpdate("create table neworders"
+					+ "(no_o_id int, no_d_id smallint, no_w_id smallint) "
+					+ "engine=memory");
+			_statement
+					.executeUpdate("create index newordersindex on neworders(no_d_id, no_w_id, no_o_id)");
+			_statement
+					.executeUpdate("create table orderlines"
+							+ "(ol_o_id int, ol_d_id smallint, ol_w_id smallint, "
+							+ "ol_number int, ol_i_id int, ol_supply_w_id smallint, ol_delivery_d bigint, ol_quantity int, ol_amount float, ol_dist_info varchar(32)) "
+							+ "engine=memory");
+			_statement
+					.executeUpdate("create index orderlinesindex on orderlines(ol_w_id, ol_d_id, ol_o_id, ol_number)");
+			_statement
+					.executeUpdate("create table histories"
+							+ "(h_c_id int, h_c_d_id smallint, h_c_w_id smallint, h_d_id smallint, h_w_id smallint, h_date bigint, h_amount float, h_data varchar(32)) "
+							+ "engine=memory");
+			_statement
+					.executeUpdate("create index historiesindex on histories(h_d_id, h_w_id)");
+			_statement
+					.executeUpdate("create table stocks"
+							+ "(s_i_id int, s_w_id smallint, s_quantity int, "
+							+ "s_dist_01 varchar(32), s_dist_02 varchar(32), s_dist_03 varchar(32), s_dist_04 varchar(32), s_dist_05 varchar(32), "
+							+ "s_dist_06 varchar(32), s_dist_07 varchar(32), s_dist_08 varchar(32), s_dist_09 varchar(32), s_dist_10 varchar(32), "
+							+ "s_ytd int, s_order_cnt int, s_remote_cnt int, s_data varchar(64)) "
+							+ "engine=memory");
+			_statement
+					.executeUpdate("create index stocksindex on stocks(s_w_id, s_i_id)");
+
+			_itemsInsertion = _connection
+					.prepareStatement("insert into items values(?, ?, ?, ?, ?)");
+			_warehousesInsertion = _connection
+					.prepareStatement("insert into warehouses values(?, ?, ?, ?, ?, ?, ?, ?, ?)");
+			_districtsInsertion = _connection
+					.prepareStatement("insert into districts values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+			_customersInsertion = _connection
+					.prepareStatement("insert into customers values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+			_ordersInsertion = _connection
+					.prepareStatement("insert into orders values(?, ?, ?, ?, ?, ?, ?, ?)");
+			_newordersInsertion = _connection
+					.prepareStatement("insert into neworders values(?, ?, ?)");
+			_orderlinesInsertion = _connection
+					.prepareStatement("insert into orderlines values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+			_historiesInsertion = _connection
+					.prepareStatement("insert into histories values(?, ?, ?, ?, ?, ?, ?, ?)");
+			_stocksInsertion = _connection
+					.prepareStatement("insert into stocks values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+			System.out.println("create table finished!");
+			Thread.sleep(5000);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {

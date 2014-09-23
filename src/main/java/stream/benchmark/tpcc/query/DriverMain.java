@@ -11,7 +11,7 @@ public class DriverMain {
 	public static void main(String[] args) {
 		TopologyBuilder builder = new TopologyBuilder();
 		builder.setSpout("spout", new TpccSpout());
-		BoltDeclarer bolt = builder.setBolt("bolt", new StateMachineBolt());
+		BoltDeclarer bolt = builder.setBolt("bolt", new NewOrderDBBolt());
 		
 		bolt.globalGrouping("spout", "item");
 		bolt.globalGrouping("spout", "warehouse");
