@@ -686,11 +686,7 @@ public class NewOrderDBBolt extends BaseRichBolt {
 			_stocksInsertion = _connection
 					.prepareStatement("insert into stocks values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-			
-			
-			
-			System.out.println("create table finished!");
-			Thread.sleep(5000);
+			System.out.println("database initiated!");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

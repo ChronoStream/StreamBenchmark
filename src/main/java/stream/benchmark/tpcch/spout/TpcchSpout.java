@@ -30,9 +30,6 @@ public class TpcchSpout extends BaseRichSpout {
 
 	public TpcchSpout() {
 		_scaleParams = new ScaleParams(4, 1);
-		_scaleParams._numItems = 10;
-		_scaleParams._numCustomersPerDistrict = 5;
-		_scaleParams._numNewOrdersPerDistrict = 2;
 	}
 
 	public TpcchSpout(int warehouses, double scalefactor) {
@@ -50,7 +47,7 @@ public class TpcchSpout extends BaseRichSpout {
 			boolean isOrigin = _originalRows.contains(item_id);
 			String tuple = BenchmarkLoader.generateItem(item_id, isOrigin);
 			// item_id, item_image_id, item_name, item_price, item_data
-			_collector.emit("item", new Values("item," + tuple));
+			_collector.emit("item", new Values(tuple));
 			++_numEmittedItems;
 			return;
 		}
@@ -64,8 +61,7 @@ public class TpcchSpout extends BaseRichSpout {
 				String warehouseTuple = BenchmarkLoader.generateWarehouse(w_id);
 				// warehouse_id, warehouse_name, warehouse_address,
 				// warehouse_tax, warehouse_ytd
-				_collector.emit("warehouse", new Values("warehouse,"
-						+ warehouseTuple));
+				_collector.emit("warehouse", new Values(warehouseTuple));
 			}
 			// generate districts, customers, orders here
 			if (_numEmittedDistricts < _scaleParams._numDistrictsPerWarehouse) {
@@ -81,8 +77,7 @@ public class TpcchSpout extends BaseRichSpout {
 							w_id, d_id, d_next_o_id);
 					// district_id, warehouse_id, district_name,
 					// district_address, district_tax, district_ytd
-					_collector.emit("district", new Values("district,"
-							+ districtTuple));
+					_collector.emit("district", new Values(districtTuple));
 				}
 				// generate customer here
 				if (_numEmittedCustomers < _scaleParams._numCustomersPerDistrict) {
@@ -93,17 +88,15 @@ public class TpcchSpout extends BaseRichSpout {
 					// customer_id, district, warehouse, name, address, phone,
 					// create_time, credit, credit_limit, discount, balance,
 					// tyd_payment, payment_count, delivery_count, data
-					_collector.emit("customer", new Values("customer,"
-							+ customerTuple));
+					_collector.emit("customer", new Values(customerTuple));
 
 					String historyTuple = BenchmarkLoader.generateHistory(w_id,
 							d_id, c_id);
-					_collector.emit("history", new Values("history,"
-							+ historyTuple));
+					_collector.emit("history", new Values(historyTuple));
 					++_numEmittedCustomers;
 					return;
 				}
-				// // generate order here
+				// generate order here
 				if (_numEmittedOrders < _scaleParams._numCustomersPerDistrict) {
 					int o_id = _numEmittedOrders + 1;
 					int o_ol_cnt = BenchmarkRandom.getNumber(
@@ -112,19 +105,17 @@ public class TpcchSpout extends BaseRichSpout {
 					boolean newOrder = (_scaleParams._numCustomersPerDistrict - _scaleParams._numNewOrdersPerDistrict) < o_id;
 					String orderTuple = BenchmarkLoader.generateOrder(w_id,
 							d_id, o_id, o_id, o_ol_cnt, newOrder);
-					_collector
-							.emit("orders", new Values("order," + orderTuple));
+					_collector.emit("order", new Values(orderTuple));
 					for (int ol_number = 0; ol_number < o_ol_cnt; ++ol_number) {
-						String orderlineTuple = BenchmarkLoader.generateOrder(
+						String orderlineTuple = BenchmarkLoader.generateOrderLine(
 								w_id, d_id, o_id, ol_number,
 								_scaleParams._numItems, newOrder);
-						_collector.emit("orderline", new Values("orderline,"
-								+ orderlineTuple));
+						_collector
+								.emit("orderline", new Values(orderlineTuple));
 					}
 					if (newOrder) {
 						String neworderTuple = o_id + "," + d_id + "," + w_id;
-						_collector.emit("neworder", new Values("neworder,"
-								+ neworderTuple));
+						_collector.emit("neworder", new Values(neworderTuple));
 					}
 					++_numEmittedOrders;
 					return;
@@ -144,33 +135,34 @@ public class TpcchSpout extends BaseRichSpout {
 				boolean original = _stockSelectedRows.contains(i_id);
 				String stockTuple = BenchmarkLoader.generateStock(w_id, i_id,
 						original);
-				_collector.emit("stock", new Values("stock," + stockTuple));
+				_collector.emit("stock", new Values(stockTuple));
 				++_numEmittedStocks;
 				return;
 			}
 			++_numEmittedWarehouses;
 			_numEmittedDistricts = 0;
 			_numEmittedStocks = 0;
+			return;
 		}
 
 		// generate execution here
 		int x = BenchmarkRandom.getNumber(1, 100);
 		if (x <= 4) {
 			String param = _executor.generateStockLevelParams();
-			_collector.emit("STOCK_LEVEL", new Values("STOCK_LEVEL," + param));
+			_collector.emit("STOCK_LEVEL", new Values(param));
 		} else if (x <= 4 + 4) {
 			String param = _executor.generateDeliveryParams();
-			_collector.emit("DELIVERY", new Values("DELIVERY," + param));
+			_collector.emit("DELIVERY", new Values(param));
 		} else if (x <= 4 + 4 + 4) {
 			String param = _executor.generateOrderStatusParams();
 			_collector
-					.emit("ORDER_STATUS", new Values("ORDER_STATUS," + param));
+					.emit("ORDER_STATUS", new Values(param));
 		} else if (x <= 43 + 4 + 4 + 4) {
 			String param = _executor.generatePaymentParams();
-			_collector.emit("PAYMENT", new Values("PAYMENT," + param));
+			_collector.emit("PAYMENT", new Values(param));
 		} else {
 			String param = _executor.generateNewOrderParams();
-			_collector.emit("NEW_ORDER", new Values("NEW_ORDER," + param));
+			_collector.emit("NEW_ORDER", new Values(param));
 		}
 	}
 
@@ -190,12 +182,13 @@ public class TpcchSpout extends BaseRichSpout {
 		declarer.declareStream("neworder", new Fields("tuple"));
 		declarer.declareStream("orderline", new Fields("tuple"));
 		declarer.declareStream("history", new Fields("tuple"));
-		declarer.declareStream("trigger", new Fields("tuple"));
+		
 		declarer.declareStream("DELIVERY", new Fields("param"));
 		declarer.declareStream("NEW_ORDER", new Fields("param"));
 		declarer.declareStream("ORDER_STATUS", new Fields("param"));
 		declarer.declareStream("PAYMENT", new Fields("param"));
 		declarer.declareStream("STOCK_LEVEL", new Fields("param"));
+
 	}
 
 }

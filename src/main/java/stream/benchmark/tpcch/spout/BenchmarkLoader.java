@@ -158,7 +158,7 @@ public class BenchmarkLoader {
 		if (newOrder) {
 			o_carrier_id = BenchmarkConstant.NULL_CARRIER_ID;
 		}
-		int o_all_local = BenchmarkConstant.INITIAL_ALL_LOCAL;
+		boolean o_all_local = BenchmarkConstant.INITIAL_ALL_LOCAL;
 
 		StringBuilder sb = new StringBuilder();
 		sb.append(o_id);

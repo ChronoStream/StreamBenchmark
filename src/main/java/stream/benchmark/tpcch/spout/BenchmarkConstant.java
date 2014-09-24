@@ -4,7 +4,7 @@ public class BenchmarkConstant {
 	public static final int MONEY_DECIMALS=2;
 	
 	//Item constants
-	public static final int NUM_ITEMS = 100000;
+	public static final int NUM_ITEMS = 1000; // origin : 100000
 	public static final int MIN_IM = 1;
 	public static final int MAX_IM = 10000;
 	public static final double MIN_PRICE = 1.00;
@@ -33,15 +33,15 @@ public class BenchmarkConstant {
 	public static final int MIN_QUANTITY = 10;
 	public static final int MAX_QUANTITY = 100;
 	public static final int DIST = 24;
-	public static final int STOCK_PER_WAREHOUSE = 100000;
+	public static final int STOCK_PER_WAREHOUSE = 1000; //origin : 100000
 
 	//District constants
 	public static final int DISTRICTS_PER_WAREHOUSE = 10;
 	public static final double INITIAL_D_YTD = 30000.00; //different from Warehouse
-	public static final int INITIAL_NEXT_O_ID = 3001;
+	public static final int INITIAL_NEXT_O_ID = 31; // origin : 3001
 
 	//Customer constants
-	public static final int CUSTOMERS_PER_DISTRICT = 3000;
+	public static final int CUSTOMERS_PER_DISTRICT = 30; // origin : 3000
 	public static final double INITIAL_CREDIT_LIM = 50000.00;
 	public static final double MIN_DISCOUNT = 0.0000;
 	public static final double MAX_DISCOUNT = 0.5000;
@@ -63,13 +63,13 @@ public class BenchmarkConstant {
 	public static final int MIN_CARRIER_ID = 1;
 	public static final int MAX_CARRIER_ID = 10;
 	//HACK: This is not strictly correct, but it works
-	public static final long NULL_CARRIER_ID = 0L;
+	public static final int NULL_CARRIER_ID = 0;
 	//o_id < than this value, carrier != null, >= -> carrier == null
 	public static final int NULL_CARRIER_LOWER_BOUND = 2101;
 	public static final int MIN_OL_CNT = 5;
 	public static final int MAX_OL_CNT = 15;
-	public static final int INITIAL_ALL_LOCAL = 1;
-	public static final int INITIAL_ORDERS_PER_DISTRICT = 3000;
+	public static final boolean INITIAL_ALL_LOCAL = true;
+	public static final int INITIAL_ORDERS_PER_DISTRICT = 30; // origin : 3000
 
 	//Used to generate new order transactions
 	public static final int MAX_OL_QUANTITY = 10;
@@ -84,7 +84,7 @@ public class BenchmarkConstant {
 	public static final double INITIAL_AMOUNT = 10.00;
 
 	//New order constants
-	public static final int INITIAL_NEW_ORDERS_PER_DISTRICT = 900;
+	public static final int INITIAL_NEW_ORDERS_PER_DISTRICT = 9; // origin : 900
 
 	//TPC-C 2.4.3.4 (page 31) says this must be displayed when new order rolls back.
 	public static final String INVALID_ITEM_MESSAGE = "Item number is not valid";

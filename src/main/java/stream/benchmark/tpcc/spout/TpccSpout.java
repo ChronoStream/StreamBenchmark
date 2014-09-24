@@ -30,9 +30,6 @@ public class TpccSpout extends BaseRichSpout {
 
 	public TpccSpout() {
 		_scaleParams = new ScaleParams(4, 1);
-//		_scaleParams._numItems = 10;
-//		_scaleParams._numCustomersPerDistrict = 5;
-//		_scaleParams._numNewOrdersPerDistrict = 2;
 	}
 
 	public TpccSpout(int warehouses, double scalefactor) {

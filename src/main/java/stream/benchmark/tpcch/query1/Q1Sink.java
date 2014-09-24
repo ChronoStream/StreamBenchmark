@@ -14,11 +14,10 @@ public class Q1Sink extends BaseRichBolt {
 
 	public void prepare(Map stormConf, TopologyContext context,
 			OutputCollector collector) {
-		
 	}
 
 	public void execute(Tuple input) {
-		
+		System.out.println(input.getString(0));
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
