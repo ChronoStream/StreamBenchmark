@@ -3,6 +3,10 @@ package stream.benchmark.tpcc.query;
 import java.util.List;
 
 public class TableState {
+	// w_id smallint, w_name varchar(16),
+	// w_street_1 varchar(32), w_street_2 varchar(32), w_city varchar(32),
+	// w_state varchar(2), w_zip varchar(9),
+	// w_tax float, w_ytd float
 	protected static class WarehouseState {
 		public WarehouseState(int _id, String _name, String _street1,
 				String _street2, String _city, String _state, String _zip,
@@ -28,7 +32,10 @@ public class TableState {
 		double _tax;
 		double _ytd;
 	}
-
+	
+	// d_id smallint, d_w_id smallint, d_name varchar(16), 
+	// d_street_1 varchar(32), d_street_2 varchar(32), d_city varchar(32), d_state varchar(2), d_zip varchar(9), 
+	// d_tax float, d_ytd float, d_next_o_id int
 	protected static class DistrictState {
 		public DistrictState(int _id, int _w_id, String _name, String _street1,
 				String _street2, String _city, String _state, String _zip,
@@ -59,6 +66,13 @@ public class TableState {
 		int _next_o_id;
 	}
 
+	// c_id int, c_d_id smallint, c_w_id smallint, 
+	// c_first varchar(32), c_middle varchar(2), c_last varchar(32), 
+	// c_street_1 varchar(32), c_street_2 varchar(32), c_city varchar(32), c_state varchar(2), c_zip varchar(9), 
+	// c_phone varchar(32), c_since bigint, 
+	// c_credit varchar(2), c_credit_lim float, 
+	// c_discount float, c_balance float, c_ytd_payment float, c_payment_cnt int, c_delivery_cnt int, 
+	// c_data varchar(500)
 	protected static class CustomerState {
 		public CustomerState(int _id, int _d_id, int _w_id, String _first,
 				String _middle, String _last, String _street1, String _street2,
@@ -112,6 +126,7 @@ public class TableState {
 		String _data;
 	}
 
+	// h_c_id int, h_c_d_id smallint, h_c_w_id smallint, h_d_id smallint, h_w_id smallint, h_date bigint, h_amount float, h_data varchar(32)
 	protected static class HistoryState {
 		public HistoryState(int _c_id, int _c_d_id, int _c_w_id, int _d_id,
 				int _w_id, long _date, double _amount, String _data) {
@@ -135,6 +150,7 @@ public class TableState {
 		String _data;
 	}
 
+	// o_id int, o_c_id int, o_d_id smallint, o_w_id smallint, o_entry_d bigint, o_carrier_id int, o_ol_cnt int, o_all_local int
 	protected static class OrderState {
 		public OrderState(int _id, int _c_id, int _d_id, int _w_id,
 				long _entry_d, int _carrier_id, double _ol_cnt,
@@ -159,6 +175,7 @@ public class TableState {
 		boolean _all_local;
 	}
 
+	// no_o_id int, no_d_id smallint, no_w_id smallint
 	protected static class NewOrderState {
 		public NewOrderState(int _o_id, int _d_id, int _w_id) {
 			this._o_id = _o_id;
@@ -171,6 +188,10 @@ public class TableState {
 		int _w_id;
 	}
 
+	// s_i_id int, s_w_id smallint, s_quantity int, 
+	// s_dist_01 varchar(32), s_dist_02 varchar(32), s_dist_03 varchar(32), s_dist_04 varchar(32), s_dist_05 varchar(32), 
+	// s_dist_06 varchar(32), s_dist_07 varchar(32), s_dist_08 varchar(32), s_dist_09 varchar(32), s_dist_10 varchar(32), 
+	// s_ytd int, s_order_cnt int, s_remote_cnt int, s_data varchar(64)
 	protected static class StockState {
 		public StockState(int _i_id, int _w_id, int _quantity,
 				List<String> _dists, int _ytd, int _order_cnt, int _remote_cnt,
@@ -184,6 +205,7 @@ public class TableState {
 			this._remote_cnt = _remote_cnt;
 			this._data = _data;
 		}
+
 		int _i_id;
 		int _w_id;
 		int _quantity;
@@ -193,7 +215,9 @@ public class TableState {
 		int _remote_cnt;
 		String _data;
 	}
-
+	
+	// ol_o_id int, ol_d_id smallint, ol_w_id smallint, 
+	// ol_number int, ol_i_id int, ol_supply_w_id smallint, ol_delivery_d bigint, ol_quantity int, ol_amount float, ol_dist_info varchar(32)
 	protected static class OrderLineState {
 		public OrderLineState(int _ol_o_id, int _ol_d_id, int _ol_w_id,
 				int _ol_number, int _ol_i_id, int _ol_supply_w_id,
@@ -223,6 +247,8 @@ public class TableState {
 		String _ol_dist_info;
 	}
 
+	// i_id int, i_im_id int, i_name varchar(32), i_price float, i_data
+	// varchar(64)
 	protected static class ItemState {
 		public ItemState(int _id, int _im_id, String _name, double _price,
 				String _data) {

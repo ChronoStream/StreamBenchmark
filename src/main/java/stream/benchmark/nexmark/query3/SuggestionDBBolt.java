@@ -79,7 +79,7 @@ public class SuggestionDBBolt extends BaseRichBolt {
 		}
 	}
 
-	protected void processQuery(){
+	protected void processQuery() {
 		try {
 			auctionInsertion.executeBatch();
 			personInsertion.executeBatch();
@@ -130,8 +130,9 @@ public class SuggestionDBBolt extends BaseRichBolt {
 					.executeUpdate("create table auctiontable"
 							+ "(seller varchar(20), auction_id varchar(20), category int, begin_time bigint) "
 							+ "engine=memory");
-			statement.executeUpdate("create index auctionindex on auctiontable(seller)");
-			
+			statement
+					.executeUpdate("create index auctionindex on auctiontable(seller)");
+
 			personInsertion = connection
 					.prepareStatement("insert into persontable values(?, ?, ?, ?)");
 			auctionInsertion = connection
