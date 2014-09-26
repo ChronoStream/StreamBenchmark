@@ -1,4 +1,4 @@
-package stream.benchmark.tpcc.query;
+package stream.benchmark.tpcch.query;
 
 import java.util.List;
 
@@ -272,5 +272,39 @@ public class TableState {
 		String _name;
 		double _price;
 		String _data;
+	}
+
+	protected static class SupplierState {
+		public SupplierState(int _supplier_id, String _name, int _nation_key) {
+			this._supplier_id = _supplier_id;
+			this._name = _name;
+			this._nation_key = _nation_key;
+		}
+
+		int _supplier_id;
+		String _name;
+		int _nation_key;
+	}
+
+	protected static class NationState {
+		public NationState(int _nation_key, String _name, int _region_key) {
+			this._nation_key = _nation_key;
+			this._name = _name;
+			this._region_key = _region_key;
+		}
+
+		int _nation_key;
+		String _name;
+		int _region_key;
+	}
+
+	protected static class RegionState {
+		public RegionState(int _region_key, String _region_name) {
+			this._region_key = _region_key;
+			this._region_name = _region_name;
+		}
+
+		int _region_key;
+		String _region_name;
 	}
 }

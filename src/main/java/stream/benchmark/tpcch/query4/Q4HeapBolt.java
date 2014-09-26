@@ -1,5 +1,6 @@
 package stream.benchmark.tpcch.query4;
 
+import java.util.List;
 import java.util.Map;
 
 import backtype.storm.task.OutputCollector;
@@ -13,14 +14,17 @@ public class Q4HeapBolt extends BaseRichBolt {
 	private static final long serialVersionUID = 1L;
 
 	private OutputCollector _collector;
+	
+	// warehouse -> district -> order -> list<delivery_d>
+	Map<Integer, Map<Integer, Map<Integer, List<Double>>>> _orderTree;
 
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);
 		String[] fields = tuple.split(",");
 		String streamname = input.getSourceStreamId();
-		if(streamname == ""){
+		if(streamname == "orders"){
 			
-		} else if (streamname == ""){
+		} else if (streamname == "orderlines"){
 			
 		} else if (streamname == ""){
 			
@@ -33,7 +37,7 @@ public class Q4HeapBolt extends BaseRichBolt {
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		declarer.declare(new Fields());
+		declarer.declare(new Fields("result"));
 	}
 
 }

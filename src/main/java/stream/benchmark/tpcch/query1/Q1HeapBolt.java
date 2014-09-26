@@ -29,7 +29,7 @@ public class Q1HeapBolt extends BaseRichBolt {
 	private Statement _orderlinesInsertion;
 
 	long _beginTime;
-	
+
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);
 		String[] fields = tuple.split(",");
@@ -85,10 +85,10 @@ public class Q1HeapBolt extends BaseRichBolt {
 			// _orderlinesInsertion.executeUpdate();
 		}
 
-		else if (streamname == "DELIVERY" || streamname == "NEW_ORDER"
+		if (streamname == "DELIVERY" || streamname == "NEW_ORDER"
 				|| streamname == "ORDER_STATUS" || streamname == "PAYMENT"
 				|| streamname == "STOCK_LEVEL") {
-			if (System.currentTimeMillis() - _beginTime < 2000){
+			if (System.currentTimeMillis() - _beginTime < 2000) {
 				return;
 			}
 			StringBuilder sb = new StringBuilder();
