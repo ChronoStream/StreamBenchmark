@@ -17,7 +17,7 @@ public class StateMachineSink extends BaseRichBolt {
 
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);
-//		System.out.println(tuple);
+		System.out.println(tuple);
 		++_count;
 		if (_count % 1000 == 0) {
 			_measureElapsedTime = System.currentTimeMillis()

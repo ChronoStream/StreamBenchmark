@@ -87,7 +87,7 @@ public class BenchmarkExecutor {
 		// Return parameters for ORDER_STATUS
 		int w_id = makeWarehouseId();
 		int d_id = makeDistrictId();
-		String c_last = "";
+		String c_last = "-1";
 		int c_id = -1;
 
 		// 60%: order status by last name

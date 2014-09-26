@@ -18,6 +18,7 @@ import stream.benchmark.tpcc.query.TableState.WarehouseState;
 import stream.benchmark.tpcc.query.TableState.DistrictState;
 import stream.benchmark.tpcc.query.TableState.CustomerState;
 import stream.benchmark.tpcc.spout.BenchmarkConstant;
+import stream.benchmark.tpcc.spout.BenchmarkRandom;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -48,7 +49,7 @@ public class StateMachineBolt extends BaseRichBolt {
 	private List<OrderLineState> _orderlines;
 	private Map<Integer, Map<Integer, Map<Integer, List<OrderLineState>>>> _orderlinesIndex;
 	private List<HistoryState> _histories;
-	private Map<Integer, Map<Integer, Map<Integer, HistoryState>>> _historiesIndex;
+	private Map<Integer, Map<Integer, Map<Integer, List<HistoryState>>>> _historiesIndex;
 	private List<StockState> _stocks;
 	private Map<Integer, Map<Integer, StockState>> _stocksIndex;
 
@@ -200,14 +201,22 @@ public class StateMachineBolt extends BaseRichBolt {
 					fields[7]);
 			_histories.add(history);
 			if (!_historiesIndex.containsKey(h_c_w_id)) {
-				_historiesIndex.put(h_c_w_id,
-						new HashMap<Integer, Map<Integer, HistoryState>>());
+				_historiesIndex
+						.put(h_c_w_id,
+								new HashMap<Integer, Map<Integer, List<HistoryState>>>());
 			}
 			if (!_historiesIndex.get(h_c_w_id).containsKey(h_c_d_id)) {
 				_historiesIndex.get(h_c_w_id).put(h_c_d_id,
-						new HashMap<Integer, HistoryState>());
+						new HashMap<Integer, List<HistoryState>>());
 			}
-			_historiesIndex.get(h_c_w_id).get(h_c_d_id).put(h_c_id, history);
+			if (!_historiesIndex.get(h_c_w_id).get(h_c_d_id)
+					.containsKey(h_c_id)) {
+				_historiesIndex.get(h_c_w_id).get(h_c_d_id)
+						.put(h_c_id, new LinkedList<HistoryState>());
+			}
+
+			_historiesIndex.get(h_c_w_id).get(h_c_d_id).get(h_c_id)
+					.add(history);
 		} else if (streamname == "DELIVERY") {
 			int w_id = Integer.valueOf(fields[0]);
 			int o_carrier_id = Integer.valueOf(fields[1]);
@@ -249,9 +258,10 @@ public class StateMachineBolt extends BaseRichBolt {
 				}
 				// updateCustomer : ol_total, c_id, d_id, w_id
 				_customersIndex.get(w_id).get(d_id).get(c_id)._balance += sum;
+				_collector.emit(new Values("delivery result: " + d_id + ","
+						+ no_o_id));
 			}
 		} else if (streamname == "NEW_ORDER") {
-			System.out.println("new_order=" + tuple);
 			int w_id = Integer.valueOf(fields[0]);
 			int d_id = Integer.valueOf(fields[1]);
 			int c_id = Integer.valueOf(fields[2]);
@@ -369,18 +379,58 @@ public class StateMachineBolt extends BaseRichBolt {
 						ol_amount));
 			}
 			total *= (1 - c_discount) * (1 + w_tax + d_tax);
-
+			_collector.emit(new Values("new_order result: " + c_id + ","
+					+ w_tax + "," + d_tax + "," + d_next_o_id + "," + total));
 		} else if (streamname == "ORDER_STATUS") {
+			int w_id = Integer.valueOf(fields[0]);
+			int d_id = Integer.valueOf(fields[1]);
+			int c_id = Integer.valueOf(fields[2]);
+			CustomerState tmpCustomer;
+			if (c_id != -1) {
+				tmpCustomer = _customersIndex.get(w_id).get(d_id).get(c_id);
+				// get C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE
+			} else {
+				// Get the midpoint customer's id
+				List<CustomerState> customerList = new LinkedList<CustomerState>();
+				for (CustomerState entry : _customersIndex.get(w_id).get(d_id)
+						.values()) {
+					if (entry._last.equals(fields[3])) {
+						customerList.add(entry);
+					}
+				}
+				tmpCustomer = customerList.get((customerList.size() - 1) / 2);
+			}
+			OrderState lastOrder = null;
+			// getLastOrder : w_id, d_id, c_id
+			Map<Integer, OrderState> tmpOrderList = _ordersIndex.get(w_id).get(
+					d_id);
+			for (OrderState tmpOrder : tmpOrderList.values()) {
+				if (tmpOrder._c_id == tmpCustomer._id) {
+					lastOrder = tmpOrder;
+				}
+			}
+			if (lastOrder == null) {
+				_collector.emit(new Values("order_status result: null"));
+			} else {
+				// getOrderLines : w_id, d_id, order[0]
+				for (OrderLineState tmpOrderline : _orderlinesIndex.get(w_id)
+						.get(d_id).get(lastOrder._id)) {
+					_collector
+							.emit(new Values("order_status result: " + c_id
+									+ "," + lastOrder._id + ","
+									+ tmpOrderline._ol_i_id));
+				}
+			}
 
 		} else if (streamname == "PAYMENT") {
 			int w_id = Integer.valueOf(fields[0]);
 			int d_id = Integer.valueOf(fields[1]);
-			double h_amount = Integer.valueOf(fields[2]);
+			double h_amount = Double.valueOf(fields[2]);
 			int c_w_id = Integer.valueOf(fields[3]);
 			int c_d_id = Integer.valueOf(fields[4]);
 			int c_id = Integer.valueOf(fields[5]);
 			String c_last = fields[6];
-			long h_date = Integer.valueOf(fields[7]);
+			long h_date = Long.valueOf(fields[7]);
 			CustomerState tmpCustomer;
 			if (c_id != -1) {
 				tmpCustomer = _customersIndex.get(c_w_id).get(c_d_id).get(c_id);
@@ -400,43 +450,48 @@ public class StateMachineBolt extends BaseRichBolt {
 			double c_balance = tmpCustomer._balance - h_amount;
 			double c_ytd_payment = tmpCustomer._ytd_payment + h_amount;
 			int c_payment_cnt = tmpCustomer._payment_count + 1;
-			String c_data = tmpCustomer._data;
 			WarehouseState tmpWarehouse = _warehousesIndex.get(w_id);
 			DistrictState tmpDistrict = _districtsIndex.get(w_id).get(d_id);
 			tmpWarehouse._ytd += h_amount;
 			tmpDistrict._ytd += h_amount;
 
-			// // Customer Credit Information
-			// if (tmpCustomer._credit == constants.BAD_CREDIT){
-			// String newData = c_id+" "+c_d_id
-			// +" "+c_w_id+" "+d_id+" "+w_id+" "+h_amount;
-			// c_data = (newData + "|" + c_data)
-			// if len(c_data) > constants.MAX_C_DATA: c_data =
-			// c_data[:constants.MAX_C_DATA]
-			// self.cursor.execute(q["updateBCCustomer"], [c_balance,
-			// c_ytd_payment, c_payment_cnt, c_data, c_w_id, c_d_id, c_id])
-			// }
-			// else{
-			// c_data = ""
-			// self.cursor.execute(q["updateGCCustomer"], [c_balance,
-			// c_ytd_payment, c_payment_cnt, c_w_id, c_d_id, c_id])
-			// }
-			// // Concatenate w_name, four spaces, d_name
-			// h_data = "%s    %s" % (warehouse[0], district[0])
-			// // Create the history record
-			// self.cursor.execute(q["insertHistory"], [c_id, c_d_id, c_w_id,
-			// d_id, w_id, h_date, h_amount, h_data])
+			tmpCustomer._balance = c_balance;
+			tmpCustomer._ytd_payment = c_ytd_payment;
+			tmpCustomer._payment_count = c_payment_cnt;
+
+			String h_data = BenchmarkRandom.getAstring(
+					BenchmarkConstant.MIN_DATA, BenchmarkConstant.MAX_DATA);
+			// InsertHistory
+			HistoryState tmpHistory = new HistoryState(tmpCustomer._id, c_d_id,
+					c_w_id, d_id, w_id, h_date, h_amount, h_data);
+			_histories.add(tmpHistory);
+			if (!_historiesIndex.get(c_w_id).get(c_d_id).containsKey(c_id)) {
+				System.out.println("not contain!");
+				_historiesIndex.get(c_w_id).get(c_d_id)
+						.put(c_id, new LinkedList<HistoryState>());
+			}
+			_historiesIndex.get(c_w_id).get(c_d_id).get(c_id).add(tmpHistory);
 
 		} else if (streamname == "STOCK_LEVEL") {
-			// int w_id = Integer.valueOf(fields[0]);
-			// int d_id = Integer.valueOf(fields[1]);
-			// int threshold = Integer.valueOf(fields[2]);
-			// get order id
-			// get warehouse_id, district_id, order_id,
-		} else {
-
+			int w_id = Integer.valueOf(fields[0]);
+			int d_id = Integer.valueOf(fields[1]);
+			int threshold = Integer.valueOf(fields[2]);
+			// getOId
+			int next_o_id = _districtsIndex.get(w_id).get(d_id)._next_o_id;
+			// getStockCount : w_id, d_id, o_id, (o_id-20), w_id, threshold
+			for (int o_id = next_o_id - 20; o_id < next_o_id; ++o_id) {
+				for (OrderLineState tmpOrderline : _orderlinesIndex.get(w_id)
+						.get(d_id).get(o_id)) {
+					StockState tmpStock = _stocksIndex.get(
+							tmpOrderline._ol_i_id).get(w_id);
+					if (tmpStock._quantity < threshold) {
+						_collector.emit(new Values("stock_level result: "
+								+ tmpStock._i_id + "," + tmpStock._w_id + ","
+								+ tmpStock._quantity));
+					}
+				}
+			}
 		}
-		_collector.emit(new Values(streamname));
 	}
 
 	public void prepare(Map arg0, TopologyContext arg1,
@@ -459,7 +514,7 @@ public class StateMachineBolt extends BaseRichBolt {
 		_orderlines = new LinkedList<OrderLineState>();
 		_orderlinesIndex = new HashMap<Integer, Map<Integer, Map<Integer, List<OrderLineState>>>>();
 		_histories = new LinkedList<HistoryState>();
-		_historiesIndex = new HashMap<Integer, Map<Integer, Map<Integer, HistoryState>>>();
+		_historiesIndex = new HashMap<Integer, Map<Integer, Map<Integer, List<HistoryState>>>>();
 		_stocks = new LinkedList<StockState>();
 		_stocksIndex = new HashMap<Integer, Map<Integer, StockState>>();
 	}
