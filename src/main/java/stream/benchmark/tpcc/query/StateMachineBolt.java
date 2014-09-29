@@ -61,7 +61,7 @@ public class StateMachineBolt extends BaseRichBolt {
 			int item_id = Integer.valueOf(fields[0]);
 			ItemState item = new ItemState(item_id, Integer.valueOf(fields[1]),
 					fields[2], Double.valueOf(fields[3]), fields[4]);
-			_items.add(item);
+//			_items.add(item);
 			_itemsIndex.put(item_id, item);
 		} else if (streamname == "warehouse") {
 			int warehouse_id = Integer.valueOf(fields[0]);
@@ -258,8 +258,10 @@ public class StateMachineBolt extends BaseRichBolt {
 				}
 				// updateCustomer : ol_total, c_id, d_id, w_id
 				_customersIndex.get(w_id).get(d_id).get(c_id)._balance += sum;
-				_collector.emit(new Values("delivery result: " + d_id + ","
-						+ no_o_id));
+				String result = String.format(
+						"delivery result: district_id=%d, order_id=%d", d_id,
+						no_o_id);
+				_collector.emit(new Values(result));
 			}
 		} else if (streamname == "NEW_ORDER") {
 			int w_id = Integer.valueOf(fields[0]);
@@ -379,8 +381,10 @@ public class StateMachineBolt extends BaseRichBolt {
 						ol_amount));
 			}
 			total *= (1 - c_discount) * (1 + w_tax + d_tax);
-			_collector.emit(new Values("new_order result: " + c_id + ","
-					+ w_tax + "," + d_tax + "," + d_next_o_id + "," + total));
+			String result = String
+					.format("new_order result: customer_id= %d, warehouse_tax=%f, district_tax=%f, order_id=%d, total=%f",
+							c_id, w_tax, d_tax, d_next_o_id, total);
+			_collector.emit(new Values(result));
 		} else if (streamname == "ORDER_STATUS") {
 			int w_id = Integer.valueOf(fields[0]);
 			int d_id = Integer.valueOf(fields[1]);
@@ -407,6 +411,7 @@ public class StateMachineBolt extends BaseRichBolt {
 			for (OrderState tmpOrder : tmpOrderList.values()) {
 				if (tmpOrder._c_id == tmpCustomer._id) {
 					lastOrder = tmpOrder;
+					break;
 				}
 			}
 			if (lastOrder == null) {
@@ -415,10 +420,11 @@ public class StateMachineBolt extends BaseRichBolt {
 				// getOrderLines : w_id, d_id, order[0]
 				for (OrderLineState tmpOrderline : _orderlinesIndex.get(w_id)
 						.get(d_id).get(lastOrder._id)) {
-					_collector
-							.emit(new Values("order_status result: " + c_id
-									+ "," + lastOrder._id + ","
-									+ tmpOrderline._ol_i_id));
+					String result = String
+							.format("order_status result: customer_id=%d, last_order_id=%d, item_id=%d, balance=%f",
+									tmpCustomer._id, lastOrder._id,
+									tmpOrderline._ol_i_id, tmpCustomer._balance);
+					_collector.emit(new Values(result));
 				}
 			}
 
@@ -471,7 +477,11 @@ public class StateMachineBolt extends BaseRichBolt {
 						.put(c_id, new LinkedList<HistoryState>());
 			}
 			_historiesIndex.get(c_w_id).get(c_d_id).get(c_id).add(tmpHistory);
-
+			String result = String
+					.format("payment result: warehouse_id=%d, district_id=%d, customer_id=%d, balance=%f, ytd_payment=%f",
+							w_id, d_id, tmpCustomer._id, tmpCustomer._balance,
+							tmpCustomer._ytd_payment);
+			_collector.emit(new Values(result));
 		} else if (streamname == "STOCK_LEVEL") {
 			int w_id = Integer.valueOf(fields[0]);
 			int d_id = Integer.valueOf(fields[1]);
@@ -485,9 +495,11 @@ public class StateMachineBolt extends BaseRichBolt {
 					StockState tmpStock = _stocksIndex.get(
 							tmpOrderline._ol_i_id).get(w_id);
 					if (tmpStock._quantity < threshold) {
-						_collector.emit(new Values("stock_level result: "
-								+ tmpStock._i_id + "," + tmpStock._w_id + ","
-								+ tmpStock._quantity));
+						String result = String
+								.format("stock_level result: item_id=%d, warehouse_id=%d, quantity=%d",
+										tmpStock._i_id, tmpStock._w_id,
+										tmpStock._quantity);
+						_collector.emit(new Values(result));
 					}
 				}
 			}
