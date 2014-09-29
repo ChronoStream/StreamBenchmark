@@ -21,7 +21,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class StateMachineDBBolt extends BaseRichBolt {
+public class StateMachinePureDBBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
 
@@ -211,6 +211,12 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_historiesInsertion.executeUpdate();
 			}
 
+
+//			private PreparedStatement _deliveryGet = _connection
+//					.prepareStatement("select o_c_id, no_o_id from orders, neworders where o_id = no_o_id and o_d_id = ? and o_w_id = ? and no_w_id = o_w_id limit 1");
+//			private PreparedStatement _historiesInsertion;
+//			private PreparedStatement _stocksInsertion;
+			
 			// DELIVERY
 			else if (streamname == "DELIVERY") {
 				int w_id = Integer.valueOf(fields[0]);
@@ -219,28 +225,18 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				// for each district, deliver the first new_order
 				for (int d_id = 1; d_id < BenchmarkConstant.DISTRICTS_PER_WAREHOUSE + 1; ++d_id) {
 
-					// getNewOrder: no_d_id, no_w_id
-					ResultSet neworderResult = _statement
-							.executeQuery("select no_o_id from neworders where no_d_id = "
-									+ d_id
-									+ " and no_w_id = "
-									+ w_id
-									+ " limit 1");
-					if (!neworderResult.next()) {
-						continue;
-					}
-					int no_o_id = neworderResult.getInt(1);
-					// getCId: no_o_id, d_id, w_id
+					// getNewOrder, getCId: no_d_id, no_w_id, no_o_id, d_id, w_id
 					ResultSet orderResult = _statement
-							.executeQuery("select o_c_id from orders where o_id = "
-									+ no_o_id
-									+ " and o_d_id = "
-									+ d_id
-									+ " and o_w_id = " + w_id);
+							.executeQuery("select o_c_id, no_o_id "
+									+ "from orders, neworders "
+									+ "where o_id = no_o_id and o_d_id = "
+									+ d_id + " and o_w_id = " + w_id
+									+ " and no_w_id = " + w_id + " limit 1");
 					if (!orderResult.next()) {
 						continue;
 					}
 					int c_id = orderResult.getInt(1);
+					int no_o_id = orderResult.getInt(2);
 
 					// sumOLAmount: no_o_id, d_id, w_id
 					ResultSet olamountResult = _statement
@@ -254,38 +250,35 @@ public class StateMachineDBBolt extends BaseRichBolt {
 
 					// deleteNewOrder : d_id, w_id, no_o_id
 					_statement
-							.executeUpdate("delete from neworders where no_d_id = "
-									+ d_id
-									+ " and no_w_id = "
-									+ w_id
+							.addBatch("delete from neworders where no_d_id = "
+									+ d_id + " and no_w_id = " + w_id
 									+ " and no_o_id = " + no_o_id);
 
 					// updateOrders : o_carrier_id, no_o_id, d_id, w_id
 					_statement
-							.executeUpdate("update orders set o_carrier_id = "
+							.addBatch("update orders set o_carrier_id = "
 									+ o_carrier_id + " where o_id = " + no_o_id
 									+ " and o_d_id = " + d_id
 									+ " and o_w_id = " + w_id);
 
 					// updateOrderLine : ol_delivery_d, no_o_id, d_id, w_id
 					_statement
-							.executeUpdate("update orderlines set ol_delivery_d = "
-									+ ol_delivery_d
-									+ " where ol_o_id = "
-									+ no_o_id
-									+ " and ol_d_id = "
-									+ d_id
+							.addBatch("update orderlines set ol_delivery_d = "
+									+ ol_delivery_d + " where ol_o_id = "
+									+ no_o_id + " and ol_d_id = " + d_id
 									+ " and ol_w_id = " + w_id);
 
 					// updateCustomer : ol_total, c_id, d_id, w_id
 					_statement
-							.executeUpdate("update customers set c_balance = c_balance + "
+							.addBatch("update customers set c_balance = c_balance + "
 									+ sum
 									+ " where c_id = "
 									+ c_id
 									+ " and c_d_id = "
 									+ d_id
 									+ " and c_w_id = " + w_id);
+
+					_statement.executeBatch();
 
 					String result = String.format(
 							"delivery result: district_id=%d, order_id=%d",
@@ -578,17 +571,15 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				districtResult.next();
 				String d_name = districtResult.getString(1);
 
-				_statement
-						.executeUpdate("update warehouses set w_ytd = w_ytd + "
-								+ h_amount + " where w_id = " + w_id);
-				_statement
-						.executeUpdate("update districts set d_ytd = d_ytd + "
-								+ h_amount + " where d_w_id =" + w_id
-								+ " and d_id =" + d_id);
-				_statement.executeUpdate("update customers set c_balance = "
+				_statement.addBatch("update warehouses set w_ytd = w_ytd + "
+						+ h_amount + " where w_id = " + w_id);
+				_statement.addBatch("update districts set d_ytd = d_ytd + "
+						+ h_amount + " where d_w_id =" + w_id + " and d_id ="
+						+ d_id);
+				_statement.addBatch("update customers set c_balance = "
 						+ c_balance + ", c_ytd_payment = " + c_ytd_payment
 						+ ", c_payment_cnt = " + c_payment_cnt);
-
+				_statement.executeBatch();
 				String h_data = BenchmarkRandom.getAstring(
 						BenchmarkConstant.MIN_DATA, BenchmarkConstant.MAX_DATA);
 				// InsertHistory
