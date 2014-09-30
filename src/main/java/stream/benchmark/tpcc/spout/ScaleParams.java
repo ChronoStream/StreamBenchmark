@@ -25,5 +25,16 @@ public class ScaleParams implements Serializable {
 		_numDistrictsPerWarehouse = BenchmarkConstant.DISTRICTS_PER_WAREHOUSE;
 		_numCustomersPerDistrict = (int) (BenchmarkConstant.CUSTOMERS_PER_DISTRICT / scalefactor);
 		_numNewOrdersPerDistrict = (int) (BenchmarkConstant.INITIAL_NEW_ORDERS_PER_DISTRICT / scalefactor);
+//		System.out.println("scale param="+this.toString());
+	}
+
+	public String toString() {
+		return "ScaleParams [_warehouses=" + _warehouses + ", _scalefactor="
+				+ _scalefactor + ", _starting_warehouse=" + _starting_warehouse
+				+ ", _ending_warehouse=" + _ending_warehouse + ", _numItems="
+				+ _numItems + ", _numDistrictsPerWarehouse="
+				+ _numDistrictsPerWarehouse + ", _numCustomersPerDistrict="
+				+ _numCustomersPerDistrict + ", _numNewOrdersPerDistrict="
+				+ _numNewOrdersPerDistrict + "]";
 	}
 }

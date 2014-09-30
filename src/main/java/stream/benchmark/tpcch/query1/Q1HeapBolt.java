@@ -28,7 +28,7 @@ public class Q1HeapBolt extends BaseRichBolt {
 	private Statement _statement = null;
 	private Statement _orderlinesInsertion;
 
-	long _beginTime;
+	private long _beginTime;
 
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);

@@ -23,7 +23,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class StateMachineDBBolt extends BaseRichBolt {
+public class StateMachinePreparedDBBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
 
@@ -40,6 +40,21 @@ public class StateMachineDBBolt extends BaseRichBolt {
 	private PreparedStatement _orderlinesInsertion;
 	private PreparedStatement _historiesInsertion;
 	private PreparedStatement _stocksInsertion;
+
+	private PreparedStatement _neworderGet;
+	private PreparedStatement _cidGet;
+	private PreparedStatement _olAmountSum;
+	private PreparedStatement _newordersDelete;
+	private PreparedStatement _ordersUpdate;
+	private PreparedStatement _orderlinesUpdate;
+	private PreparedStatement _customersUpdate;
+
+	private PreparedStatement _iteminfoGet;
+	private PreparedStatement _wtaxGet;
+	private PreparedStatement _dtaxGet;
+	private PreparedStatement _districtsUpdate;
+	private PreparedStatement _customersGet;
+	private PreparedStatement _stocksUpdate;
 
 	private int _queryCount = 0;
 	private boolean _isFirstQuery = true;
@@ -58,7 +73,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_itemsInsertion.setString(3, fields[2]);
 				_itemsInsertion.setDouble(4, Double.valueOf(fields[3]));
 				_itemsInsertion.setString(5, fields[4]);
-				_itemsInsertion.addBatch();
 				_itemsInsertion.executeUpdate();
 			}
 
@@ -73,7 +87,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_warehousesInsertion.setString(7, fields[6]);
 				_warehousesInsertion.setDouble(8, Double.valueOf(fields[7]));
 				_warehousesInsertion.setDouble(9, Double.valueOf(fields[8]));
-				_warehousesInsertion.addBatch();
 				_warehousesInsertion.executeUpdate();
 			}
 
@@ -90,7 +103,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_districtsInsertion.setDouble(9, Double.valueOf(fields[8]));
 				_districtsInsertion.setDouble(10, Double.valueOf(fields[9]));
 				_districtsInsertion.setInt(11, Integer.valueOf(fields[10]));
-				_districtsInsertion.addBatch();
 				_districtsInsertion.executeUpdate();
 			}
 
@@ -117,7 +129,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_customersInsertion.setInt(19, Integer.valueOf(fields[18]));
 				_customersInsertion.setInt(20, Integer.valueOf(fields[19]));
 				_customersInsertion.setString(21, fields[20]);
-				_customersInsertion.addBatch();
 				_customersInsertion.executeUpdate();
 			}
 
@@ -140,7 +151,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 						Integer.valueOf(fields[tmpId]));
 				++tmpId;
 				_stocksInsertion.setString(tmpId + 1, fields[tmpId]);
-				_stocksInsertion.addBatch();
 				_stocksInsertion.executeUpdate();
 			}
 
@@ -154,7 +164,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_ordersInsertion.setInt(6, Integer.valueOf(fields[5]));
 				_ordersInsertion.setDouble(7, Double.valueOf(fields[6]));
 				_ordersInsertion.setBoolean(8, Boolean.valueOf(fields[7]));
-				_ordersInsertion.addBatch();
 				_ordersInsertion.executeUpdate();
 			}
 
@@ -163,7 +172,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_newordersInsertion.setInt(1, Integer.valueOf(fields[0]));
 				_newordersInsertion.setInt(2, Integer.valueOf(fields[1]));
 				_newordersInsertion.setInt(3, Integer.valueOf(fields[2]));
-				_newordersInsertion.addBatch();
 				_newordersInsertion.executeUpdate();
 			}
 
@@ -179,7 +187,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_orderlinesInsertion.setInt(8, Integer.valueOf(fields[7]));
 				_orderlinesInsertion.setDouble(9, Double.valueOf(fields[8]));
 				_orderlinesInsertion.setString(10, fields[9]);
-				_orderlinesInsertion.addBatch();
 				_orderlinesInsertion.executeUpdate();
 			}
 
@@ -193,7 +200,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_historiesInsertion.setLong(6, Long.valueOf(fields[5]));
 				_historiesInsertion.setDouble(7, Double.valueOf(fields[6]));
 				_historiesInsertion.setString(8, fields[7]);
-				_historiesInsertion.addBatch();
 				_historiesInsertion.executeUpdate();
 			}
 
@@ -206,72 +212,58 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				for (int d_id = 1; d_id < BenchmarkConstant.DISTRICTS_PER_WAREHOUSE + 1; ++d_id) {
 
 					// getNewOrder: no_d_id, no_w_id
-					ResultSet neworderResult = _statement
-							.executeQuery("select no_o_id from neworders where no_d_id = "
-									+ d_id
-									+ " and no_w_id = "
-									+ w_id
-									+ " limit 1");
+					_neworderGet.setInt(1, d_id);
+					_neworderGet.setInt(2, w_id);
+					ResultSet neworderResult = _neworderGet.executeQuery();
 					if (!neworderResult.next()) {
 						continue;
 					}
 					int no_o_id = neworderResult.getInt(1);
+
 					// getCId: no_o_id, d_id, w_id
-					ResultSet orderResult = _statement
-							.executeQuery("select o_c_id from orders where o_id = "
-									+ no_o_id
-									+ " and o_d_id = "
-									+ d_id
-									+ " and o_w_id = " + w_id);
+					_cidGet.setInt(1, no_o_id);
+					_cidGet.setInt(2, d_id);
+					_cidGet.setInt(3, w_id);
+					ResultSet orderResult = _cidGet.executeQuery();
 					if (!orderResult.next()) {
 						continue;
 					}
 					int c_id = orderResult.getInt(1);
 
 					// sumOLAmount: no_o_id, d_id, w_id
-					ResultSet olamountResult = _statement
-							.executeQuery("select sum(ol_amount) from orderlines where ol_o_id = "
-									+ no_o_id
-									+ " and ol_d_id = "
-									+ d_id
-									+ " and ol_w_id = " + w_id);
+					_olAmountSum.setInt(1, no_o_id);
+					_olAmountSum.setInt(2, d_id);
+					_olAmountSum.setInt(3, w_id);
+					ResultSet olamountResult = _olAmountSum.executeQuery();
 					olamountResult.next();
 					int sum = olamountResult.getInt(1);
 
 					// deleteNewOrder : d_id, w_id, no_o_id
-					_statement
-							.executeUpdate("delete from neworders where no_d_id = "
-									+ d_id
-									+ " and no_w_id = "
-									+ w_id
-									+ " and no_o_id = " + no_o_id);
+					_newordersDelete.setInt(1, d_id);
+					_newordersDelete.setInt(2, w_id);
+					_newordersDelete.setInt(3, no_o_id);
+					_newordersDelete.executeUpdate();
 
 					// updateOrders : o_carrier_id, no_o_id, d_id, w_id
-					_statement
-							.executeUpdate("update orders set o_carrier_id = "
-									+ o_carrier_id + " where o_id = " + no_o_id
-									+ " and o_d_id = " + d_id
-									+ " and o_w_id = " + w_id);
+					_ordersUpdate.setInt(1, o_carrier_id);
+					_ordersUpdate.setInt(2, no_o_id);
+					_ordersUpdate.setInt(3, d_id);
+					_ordersUpdate.setInt(4, w_id);
+					_ordersUpdate.executeUpdate();
 
 					// updateOrderLine : ol_delivery_d, no_o_id, d_id, w_id
-					_statement
-							.executeUpdate("update orderlines set ol_delivery_d = "
-									+ ol_delivery_d
-									+ " where ol_o_id = "
-									+ no_o_id
-									+ " and ol_d_id = "
-									+ d_id
-									+ " and ol_w_id = " + w_id);
+					_orderlinesUpdate.setLong(1, ol_delivery_d);
+					_orderlinesUpdate.setInt(2, no_o_id);
+					_orderlinesUpdate.setInt(3, d_id);
+					_orderlinesUpdate.setInt(4, w_id);
+					_orderlinesUpdate.executeUpdate();
 
 					// updateCustomer : ol_total, c_id, d_id, w_id
-					_statement
-							.executeUpdate("update customers set c_balance = c_balance + "
-									+ sum
-									+ " where c_id = "
-									+ c_id
-									+ " and c_d_id = "
-									+ d_id
-									+ " and c_w_id = " + w_id);
+					_customersUpdate.setInt(1, sum);
+					_customersUpdate.setInt(2, c_id);
+					_customersUpdate.setInt(3, d_id);
+					_customersUpdate.setInt(4, w_id);
+					_customersUpdate.executeUpdate();
 
 					String result = String.format(
 							"delivery result: district_id=%d, order_id=%d",
@@ -303,41 +295,40 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				List<NewOrderItemInfo> item_infos = new LinkedList<NewOrderItemInfo>();
 				for (int i = 0; i < i_ids.size(); ++i) {
 					all_local = (all_local && (w_id == i_w_ids.get(i)));
-					ResultSet itemInfoResult = _statement
-							.executeQuery("select i_price, i_name, i_data from items where i_id = "
-									+ i_ids.get(i));
+					_iteminfoGet.setInt(1, i_ids.get(i));
+					ResultSet itemInfoResult = _iteminfoGet.executeQuery();
 					itemInfoResult.next();
 					item_infos.add(new NewOrderItemInfo(itemInfoResult
 							.getDouble(1), itemInfoResult.getString(2),
 							itemInfoResult.getString(3)));
 				}
-				ResultSet wTaxResult = _statement
-						.executeQuery("select w_tax from warehouses where w_id = "
-								+ w_id);
+
+				_wtaxGet.setInt(1, w_id);
+				ResultSet wTaxResult = _wtaxGet.executeQuery();
 				wTaxResult.next();
 				double w_tax = wTaxResult.getDouble(1);
-				ResultSet dTaxResult = _statement
-						.executeQuery("select d_tax, d_next_o_id from districts where d_id = "
-								+ d_id + " and d_w_id = " + w_id);
+
+				_dtaxGet.setInt(1, d_id);
+				_dtaxGet.setInt(2, w_id);
+				ResultSet dTaxResult = _dtaxGet.executeQuery();
 				dTaxResult.next();
 				double d_tax = dTaxResult.getDouble(1);
 				int d_next_o_id = dTaxResult.getInt(2);
-				_statement.executeUpdate("update districts set d_next_o_id = "
-						+ (d_next_o_id + 1) + " where d_id = " + d_id
-						+ " and d_w_id = " + w_id);
 
-				ResultSet customerResult = _statement
-						.executeQuery("select c_discount, c_last, c_credit from customers where c_w_id = "
-								+ w_id
-								+ " and c_d_id = "
-								+ d_id
-								+ " and c_id= " + c_id);
+				_districtsUpdate.setInt(1, d_next_o_id + 1);
+				_districtsUpdate.setInt(2, d_id);
+				_districtsUpdate.setInt(3, w_id);
+				_districtsUpdate.executeUpdate();
+
+				_customersGet.setInt(1, w_id);
+				_customersGet.setInt(2, d_id);
+				_customersGet.setInt(3, c_id);
+				ResultSet customerResult = _customersGet.executeQuery();
 				customerResult.next();
 				double c_discount = customerResult.getDouble(1);
 
 				int ol_cnt = i_ids.size();
 				int o_carrier_id = BenchmarkConstant.NULL_CARRIER_ID;
-
 				_ordersInsertion.setInt(1, d_next_o_id);
 				_ordersInsertion.setInt(2, d_id);
 				_ordersInsertion.setInt(3, w_id);
@@ -391,12 +382,14 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					if (ol_supply_w_id != w_id) {
 						s_remote_cnt += 1;
 					}
-					_statement.executeUpdate("update stocks set s_quantity = "
-							+ s_quantity + ", s_ytd = " + s_ytd
-							+ ", s_order_cnt = " + s_order_cnt
-							+ ", s_remote_cnt = " + s_remote_cnt
-							+ " where s_i_id = " + ol_i_id + " and s_w_id = "
-							+ ol_supply_w_id);
+
+					_stocksUpdate.setInt(1, s_quantity);
+					_stocksUpdate.setInt(2, s_ytd);
+					_stocksUpdate.setInt(3, s_order_cnt);
+					_stocksUpdate.setInt(4, s_remote_cnt);
+					_stocksUpdate.setInt(5, ol_i_id);
+					_stocksUpdate.setInt(6, ol_supply_w_id);
+					_stocksUpdate.executeUpdate();
 
 					String brand_generic;
 					if (tmpItemInfo._i_data
@@ -644,7 +637,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 									+ " ms");
 					_queryCount = 0;
 					MemoryReport.reportStatus();
-
 					System.out.println("===================================");
 					ResultSet result = null;
 					result = _statement
@@ -687,6 +679,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					_beginTime = System.currentTimeMillis();
 				}
 			}
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -797,6 +790,34 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					.prepareStatement("insert into histories values(?, ?, ?, ?, ?, ?, ?, ?)");
 			_stocksInsertion = _connection
 					.prepareStatement("insert into stocks values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+			_neworderGet = _connection
+					.prepareStatement("select no_o_id from neworders where no_d_id = ? and no_w_id = ? limit 1");
+			_cidGet = _connection
+					.prepareStatement("select o_c_id from orders where o_id = ? and o_d_id = ? and o_w_id = ?");
+			_olAmountSum = _connection
+					.prepareStatement("select sum(ol_amount) from orderlines where ol_o_id = ? and ol_d_id = ? and ol_w_id = ?");
+			_newordersDelete = _connection
+					.prepareStatement("delete from neworders where no_d_id = ? and no_w_id = ? and no_o_id = ?");
+			_ordersUpdate = _connection
+					.prepareStatement("update orders set o_carrier_id = ? where o_id = ? and o_d_id = ? and o_w_id = ?");
+			_orderlinesUpdate = _connection
+					.prepareStatement("update orderlines set ol_delivery_d = ? where ol_o_id = ? and ol_d_id = ? and ol_w_id = ?");
+			_customersUpdate = _connection
+					.prepareStatement("update customers set c_balance = c_balance + ? where c_id = ? and c_d_id = ? and c_w_id = ?");
+
+			_iteminfoGet = _connection
+					.prepareStatement("select i_price, i_name, i_data from items where i_id = ?");
+			_wtaxGet = _connection
+					.prepareStatement("select w_tax from warehouses where w_id = ?");
+			_dtaxGet = _connection
+					.prepareStatement("select d_tax, d_next_o_id from districts where d_id = ? and d_w_id = ?");
+			_districtsUpdate = _connection
+					.prepareStatement("update districts set d_next_o_id = ? where d_id = ? and d_w_id = ?");
+			_customersGet = _connection
+					.prepareStatement("select c_discount, c_last, c_credit from customers where c_w_id = ? and c_d_id = ? and c_id = ?");
+			_stocksUpdate = _connection
+					.prepareStatement("update stocks set s_quantity = ?, s_ytd = ?, s_order_cnt = ?, s_remote_cnt = ? where s_i_id = ? and s_w_id = ?");
 
 			System.out.println("database initiated!");
 		} catch (Exception e) {

@@ -23,7 +23,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class StateMachineDBBolt extends BaseRichBolt {
+public class StateMachineHybridBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
 
@@ -44,6 +44,16 @@ public class StateMachineDBBolt extends BaseRichBolt {
 	private int _queryCount = 0;
 	private boolean _isFirstQuery = true;
 	private long _beginTime;
+
+	private int _numItemsAccess = 0;
+	private int _numWarehousesAccess = 0;
+	private int _numDistrictsAccess = 0;
+	private int _numCustomersAccess = 0;
+	private int _numStocksAccess = 0;
+	private int _numOrdersAccess = 0;
+	private int _numNewordersAccess = 0;
+	private int _numOrderlinesAccess = 0;
+	private int _numHistoriesAccess = 0;
 
 	public void execute(Tuple input) {
 		try {
@@ -204,8 +214,8 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				long ol_delivery_d = Long.valueOf(fields[2]);
 				// for each district, deliver the first new_order
 				for (int d_id = 1; d_id < BenchmarkConstant.DISTRICTS_PER_WAREHOUSE + 1; ++d_id) {
-
 					// getNewOrder: no_d_id, no_w_id
+					++_numNewordersAccess;
 					ResultSet neworderResult = _statement
 							.executeQuery("select no_o_id from neworders where no_d_id = "
 									+ d_id
@@ -217,6 +227,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					}
 					int no_o_id = neworderResult.getInt(1);
 					// getCId: no_o_id, d_id, w_id
+					++_numOrdersAccess;
 					ResultSet orderResult = _statement
 							.executeQuery("select o_c_id from orders where o_id = "
 									+ no_o_id
@@ -229,6 +240,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					int c_id = orderResult.getInt(1);
 
 					// sumOLAmount: no_o_id, d_id, w_id
+					++_numOrderlinesAccess;
 					ResultSet olamountResult = _statement
 							.executeQuery("select sum(ol_amount) from orderlines where ol_o_id = "
 									+ no_o_id
@@ -239,6 +251,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					int sum = olamountResult.getInt(1);
 
 					// deleteNewOrder : d_id, w_id, no_o_id
+					++_numNewordersAccess;
 					_statement
 							.executeUpdate("delete from neworders where no_d_id = "
 									+ d_id
@@ -247,6 +260,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 									+ " and no_o_id = " + no_o_id);
 
 					// updateOrders : o_carrier_id, no_o_id, d_id, w_id
+					++_numOrdersAccess;
 					_statement
 							.executeUpdate("update orders set o_carrier_id = "
 									+ o_carrier_id + " where o_id = " + no_o_id
@@ -254,6 +268,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 									+ " and o_w_id = " + w_id);
 
 					// updateOrderLine : ol_delivery_d, no_o_id, d_id, w_id
+					++_numOrderlinesAccess;
 					_statement
 							.executeUpdate("update orderlines set ol_delivery_d = "
 									+ ol_delivery_d
@@ -264,6 +279,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 									+ " and ol_w_id = " + w_id);
 
 					// updateCustomer : ol_total, c_id, d_id, w_id
+					++_numCustomersAccess;
 					_statement
 							.executeUpdate("update customers set c_balance = c_balance + "
 									+ sum
@@ -303,6 +319,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				List<NewOrderItemInfo> item_infos = new LinkedList<NewOrderItemInfo>();
 				for (int i = 0; i < i_ids.size(); ++i) {
 					all_local = (all_local && (w_id == i_w_ids.get(i)));
+					++_numItemsAccess;
 					ResultSet itemInfoResult = _statement
 							.executeQuery("select i_price, i_name, i_data from items where i_id = "
 									+ i_ids.get(i));
@@ -311,21 +328,24 @@ public class StateMachineDBBolt extends BaseRichBolt {
 							.getDouble(1), itemInfoResult.getString(2),
 							itemInfoResult.getString(3)));
 				}
+				++_numWarehousesAccess;
 				ResultSet wTaxResult = _statement
 						.executeQuery("select w_tax from warehouses where w_id = "
 								+ w_id);
 				wTaxResult.next();
 				double w_tax = wTaxResult.getDouble(1);
+				++_numDistrictsAccess;
 				ResultSet dTaxResult = _statement
 						.executeQuery("select d_tax, d_next_o_id from districts where d_id = "
 								+ d_id + " and d_w_id = " + w_id);
 				dTaxResult.next();
 				double d_tax = dTaxResult.getDouble(1);
 				int d_next_o_id = dTaxResult.getInt(2);
+				++_numDistrictsAccess;
 				_statement.executeUpdate("update districts set d_next_o_id = "
 						+ (d_next_o_id + 1) + " where d_id = " + d_id
 						+ " and d_w_id = " + w_id);
-
+				++_numCustomersAccess;
 				ResultSet customerResult = _statement
 						.executeQuery("select c_discount, c_last, c_credit from customers where c_w_id = "
 								+ w_id
@@ -338,6 +358,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				int ol_cnt = i_ids.size();
 				int o_carrier_id = BenchmarkConstant.NULL_CARRIER_ID;
 
+				++_numOrdersAccess;
 				_ordersInsertion.setInt(1, d_next_o_id);
 				_ordersInsertion.setInt(2, d_id);
 				_ordersInsertion.setInt(3, w_id);
@@ -350,6 +371,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_ordersInsertion.executeUpdate();
 
 				// createNewOrder : d_next_o_id, d_id, w_id
+				++_numNewordersAccess;
 				_newordersInsertion.setInt(1, d_id);
 				_newordersInsertion.setInt(1, w_id);
 				_newordersInsertion.setInt(1, d_next_o_id);
@@ -367,6 +389,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 
 					String d_id_str = String.format("%02d", d_id);
 					// getStockInfo : ol_i_id, ol_supply_w_id
+					++_numStocksAccess;
 					ResultSet stockResult = _statement
 							.executeQuery("select s_quantity, s_data, s_ytd, s_order_cnt, s_remote_cnt, s_dist_"
 									+ d_id_str
@@ -391,6 +414,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					if (ol_supply_w_id != w_id) {
 						s_remote_cnt += 1;
 					}
+					++_numStocksAccess;
 					_statement.executeUpdate("update stocks set s_quantity = "
 							+ s_quantity + ", s_ytd = " + s_ytd
 							+ ", s_order_cnt = " + s_order_cnt
@@ -411,6 +435,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					total += ol_amount;
 
 					// create new order line
+					++_numOrderlinesAccess;
 					_orderlinesInsertion.setInt(1, d_next_o_id);
 					_orderlinesInsertion.setInt(2, d_id);
 					_orderlinesInsertion.setInt(3, w_id);
@@ -443,6 +468,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				String c_last = fields[3];
 				InnerCustomerState customerState = null;
 				if (c_id != -1) {
+					++_numCustomersAccess;
 					ResultSet customerResult = _statement
 							.executeQuery("select c_id, c_balance from customers where c_w_id = "
 									+ w_id
@@ -455,6 +481,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 							customerResult.getDouble(2));
 				} else {
 					// Get the midpoint customer's id
+					++_numCustomersAccess;
 					ResultSet customerResult = _statement
 							.executeQuery("select c_id, c_balance from customers where c_w_id = "
 									+ w_id
@@ -470,6 +497,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 							.get((customerList.size() - 1) / 2);
 				}
 				// getLastOrder : w_id, d_id, c_id
+				++_numOrdersAccess;
 				ResultSet lastorderResult = _statement
 						.executeQuery("select o_id from orders where o_w_id = "
 								+ w_id + " and o_d_id = " + d_id
@@ -480,6 +508,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				} else {
 					// getOrderLines : w_id, d_id, order[0]
 					int lastorder_id = lastorderResult.getInt(1);
+					++_numOrderlinesAccess;
 					ResultSet orderlineResult = _statement
 							.executeQuery("select ol_i_id from orderlines where ol_w_id = "
 									+ w_id
@@ -511,6 +540,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				long h_date = Long.valueOf(fields[7]);
 				InnerCustomerState customerState = null;
 				if (c_id != -1) {
+					++_numCustomersAccess;
 					ResultSet customerResult = _statement
 							.executeQuery("select c_id, c_balance from customers where c_w_id = "
 									+ w_id
@@ -523,6 +553,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 							customerResult.getDouble(2));
 				} else {
 					// Get the midpoint customer's id
+					++_numCustomersAccess;
 					ResultSet customerResult = _statement
 							.executeQuery("select c_id, c_balance, c_ytd_payment, c_payment_cnt from customers where c_w_id = "
 									+ w_id
@@ -545,6 +576,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				int c_payment_cnt = customerState.c_payment_cnt + 1;
 
 				// getWarehouse
+				++_numWarehousesAccess;
 				ResultSet warehouseResult = _statement
 						.executeQuery("select w_name from warehouses where w_id="
 								+ w_id);
@@ -552,19 +584,23 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				String w_name = warehouseResult.getString(1);
 
 				// getDistrict
+				++_numDistrictsAccess;
 				ResultSet districtResult = _statement
 						.executeQuery("select d_name from districts where d_w_id="
 								+ w_id + " and d_id=" + d_id);
 				districtResult.next();
 				String d_name = districtResult.getString(1);
 
+				++_numWarehousesAccess;
 				_statement
 						.executeUpdate("update warehouses set w_ytd = w_ytd + "
 								+ h_amount + " where w_id = " + w_id);
+				++_numDistrictsAccess;
 				_statement
 						.executeUpdate("update districts set d_ytd = d_ytd + "
 								+ h_amount + " where d_w_id =" + w_id
 								+ " and d_id =" + d_id);
+				++_numCustomersAccess;
 				_statement.executeUpdate("update customers set c_balance = "
 						+ c_balance + ", c_ytd_payment = " + c_ytd_payment
 						+ ", c_payment_cnt = " + c_payment_cnt);
@@ -572,6 +608,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				String h_data = BenchmarkRandom.getAstring(
 						BenchmarkConstant.MIN_DATA, BenchmarkConstant.MAX_DATA);
 				// InsertHistory
+				++_numHistoriesAccess;
 				_historiesInsertion.setInt(1, customerState.c_id);
 				_historiesInsertion.setInt(2, c_d_id);
 				_historiesInsertion.setInt(3, c_w_id);
@@ -597,6 +634,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				int d_id = Integer.valueOf(fields[1]);
 				int threshold = Integer.valueOf(fields[2]);
 				// getOId
+				++_numDistrictsAccess;
 				ResultSet oidResult = _statement
 						.executeQuery("select d_next_o_id from districts where d_w_id ="
 								+ w_id + " and d_id=" + d_id);
@@ -604,6 +642,8 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				int next_o_id = oidResult.getInt(1);
 
 				// getStockCount : w_id, d_id, o_id, (o_id-20), w_id, threshold
+				++_numOrderlinesAccess;
+				++_numStocksAccess;
 				ResultSet stockResult = _statement
 						.executeQuery("select ol_i_id, s_quantity from orderlines, stocks where ol_w_id = "
 								+ w_id
@@ -633,11 +673,14 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				++_queryCount;
 				if (_isFirstQuery) {
 					long elapsedTime = System.currentTimeMillis() - _beginTime;
+
 					System.out.println("load database elapsed time = "
 							+ elapsedTime + "ms");
 					_isFirstQuery = false;
 					_beginTime = System.currentTimeMillis();
 				} else if (_queryCount % 2000 == 0) {
+
+					System.out.println("===================================");
 					System.out
 							.println("query elapsed time:"
 									+ (System.currentTimeMillis() - _beginTime)
@@ -646,6 +689,22 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					MemoryReport.reportStatus();
 
 					System.out.println("===================================");
+					System.out.println("numItemsAccess=" + _numItemsAccess);
+					System.out.println("numWarehousesAccess="
+							+ _numWarehousesAccess);
+					System.out.println("numDistrictsAccess="
+							+ _numDistrictsAccess);
+					System.out.println("numCustomersAccess="
+							+ _numCustomersAccess);
+					System.out.println("numOrdersAccess=" + _numOrdersAccess);
+					System.out.println("numNewordersAccess="
+							+ _numNewordersAccess);
+					System.out.println("numOrderlinesAccess="
+							+ _numOrderlinesAccess);
+					System.out.println("numHistoriesAccess="
+							+ _numHistoriesAccess);
+					System.out.println("numStocksAccess=" + _numStocksAccess);
+					System.out.println("***********************************");
 					ResultSet result = null;
 					result = _statement
 							.executeQuery("select count(*) from items");

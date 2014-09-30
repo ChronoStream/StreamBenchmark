@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import stream.benchmark.toolkits.MemoryReport;
 import stream.benchmark.tpcc.query.FetchResult.NewOrderItemInfo;
 import stream.benchmark.tpcc.query.FetchResult.NewOrderItemData;
 import stream.benchmark.tpcc.query.TableState.HistoryState;
@@ -53,6 +54,19 @@ public class StateMachineBolt extends BaseRichBolt {
 	private List<StockState> _stocks;
 	private Map<Integer, Map<Integer, StockState>> _stocksIndex;
 
+	private boolean _isFirstQuery = true;
+	private long _beginTime;
+
+	private int _numItems = 0;
+	private int _numWarehouses = 0;
+	private int _numDistricts = 0;
+	private int _numCustomers = 0;
+	private int _numStocks = 0;
+	private int _numOrders = 0;
+	private int _numNeworders = 0;
+	private int _numOrderlines = 0;
+	private int _numHistories = 0;
+
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);
 		String[] fields = tuple.split(",");
@@ -61,8 +75,9 @@ public class StateMachineBolt extends BaseRichBolt {
 			int item_id = Integer.valueOf(fields[0]);
 			ItemState item = new ItemState(item_id, Integer.valueOf(fields[1]),
 					fields[2], Double.valueOf(fields[3]), fields[4]);
-//			_items.add(item);
+			_items.add(item);
 			_itemsIndex.put(item_id, item);
+			++_numItems;
 		} else if (streamname == "warehouse") {
 			int warehouse_id = Integer.valueOf(fields[0]);
 			WarehouseState warehouse = new WarehouseState(warehouse_id,
@@ -71,6 +86,7 @@ public class StateMachineBolt extends BaseRichBolt {
 					Double.valueOf(fields[8]));
 			_warehouses.add(warehouse);
 			_warehousesIndex.put(Integer.valueOf(fields[0]), warehouse);
+			++_numWarehouses;
 		} else if (streamname == "district") {
 			int district_id = Integer.valueOf(fields[0]);
 			int warehouse_id = Integer.valueOf(fields[1]);
@@ -84,6 +100,7 @@ public class StateMachineBolt extends BaseRichBolt {
 						new HashMap<Integer, DistrictState>());
 			}
 			_districtsIndex.get(warehouse_id).put(district_id, district);
+			++_numDistricts;
 		} else if (streamname == "customer") {
 			int customer_id = Integer.valueOf(fields[0]);
 			int district_id = Integer.valueOf(fields[1]);
@@ -107,6 +124,7 @@ public class StateMachineBolt extends BaseRichBolt {
 			}
 			_customersIndex.get(warehouse_id).get(district_id)
 					.put(customer_id, customer);
+			++_numCustomers;
 		} else if (streamname == "stock") {
 			int item_id = Integer.valueOf(fields[0]);
 			int warehouse_id = Integer.valueOf(fields[1]);
@@ -129,6 +147,7 @@ public class StateMachineBolt extends BaseRichBolt {
 			if (!_stocksIndex.get(item_id).containsKey(warehouse_id)) {
 				_stocksIndex.get(item_id).put(warehouse_id, stock);
 			}
+			++_numStocks;
 		} else if (streamname == "order") {
 			int order_id = Integer.valueOf(fields[0]);
 			int customer_id = Integer.valueOf(fields[1]);
@@ -149,6 +168,7 @@ public class StateMachineBolt extends BaseRichBolt {
 			}
 			_ordersIndex.get(warehouse_id).get(district_id)
 					.put(order_id, order);
+			++_numOrders;
 		} else if (streamname == "neworder") {
 			int order_id = Integer.valueOf(fields[0]);
 			int district_id = Integer.valueOf(fields[1]);
@@ -165,6 +185,7 @@ public class StateMachineBolt extends BaseRichBolt {
 						new LinkedList<Integer>());
 			}
 			_newordersIndex.get(warehouse_id).get(district_id).add(order_id);
+			++_numNeworders;
 		} else if (streamname == "orderline") {
 			int order_id = Integer.valueOf(fields[0]);
 			int district_id = Integer.valueOf(fields[1]);
@@ -191,6 +212,7 @@ public class StateMachineBolt extends BaseRichBolt {
 			}
 			_orderlinesIndex.get(warehouse_id).get(district_id).get(order_id)
 					.add(orderline);
+			++_numOrderlines;
 		} else if (streamname == "history") {
 			int h_c_id = Integer.valueOf(fields[0]);
 			int h_c_d_id = Integer.valueOf(fields[1]);
@@ -217,6 +239,7 @@ public class StateMachineBolt extends BaseRichBolt {
 
 			_historiesIndex.get(h_c_w_id).get(h_c_d_id).get(h_c_id)
 					.add(history);
+			++_numHistories;
 		} else if (streamname == "DELIVERY") {
 			int w_id = Integer.valueOf(fields[0]);
 			int o_carrier_id = Integer.valueOf(fields[1]);
@@ -472,7 +495,6 @@ public class StateMachineBolt extends BaseRichBolt {
 					c_w_id, d_id, w_id, h_date, h_amount, h_data);
 			_histories.add(tmpHistory);
 			if (!_historiesIndex.get(c_w_id).get(c_d_id).containsKey(c_id)) {
-				System.out.println("not contain!");
 				_historiesIndex.get(c_w_id).get(c_d_id)
 						.put(c_id, new LinkedList<HistoryState>());
 			}
@@ -504,6 +526,47 @@ public class StateMachineBolt extends BaseRichBolt {
 				}
 			}
 		}
+
+		if (streamname == "DELIVERY" || streamname == "NEW_ORDER"
+				|| streamname == "ORDER_STATUS" || streamname == "PAYMENT"
+				|| streamname == "STOCK_LEVEL") {
+			if (_isFirstQuery) {
+				long elapsedTime = System.currentTimeMillis() - _beginTime;
+				System.out.println("load database elapsed time = "
+						+ elapsedTime + "ms");
+				_isFirstQuery = false;
+				_beginTime = System.currentTimeMillis();
+
+			} else if (System.currentTimeMillis() - _beginTime >= 2000) {
+				MemoryReport.reportStatus();
+
+				System.out.println("===================================");
+				System.out.println("item num=" + _numItems);
+				System.out.println("warehouse num=" + _numWarehouses);
+				System.out.println("district num=" + _numDistricts);
+				System.out.println("customer num=" + _numCustomers);
+				System.out.println("order num=" + _numOrders);
+				System.out.println("neworder num=" + _numNeworders);
+				System.out.println("orderline num=" + _numOrderlines);
+				System.out.println("history num=" + _numHistories);
+				System.out.println("stock num=" + _numStocks);
+
+				System.out.println("***********************************");
+
+				System.out.println("item size=" + _items.size());
+				System.out.println("warehouse size=" + _warehouses.size());
+				System.out.println("district size=" + _districts.size());
+				System.out.println("customer size=" + _customers.size());
+				System.out.println("order size=" + _orders.size());
+				System.out.println("neworder size=" + _neworders.size());
+				System.out.println("orderline size=" + _orderlines.size());
+				System.out.println("history size=" + _histories.size());
+				System.out.println("stock size=" + _stocks.size());
+				System.out.println("===================================");
+				_beginTime = System.currentTimeMillis();
+			}
+
+		}
 	}
 
 	public void prepare(Map arg0, TopologyContext arg1,
@@ -529,6 +592,8 @@ public class StateMachineBolt extends BaseRichBolt {
 		_historiesIndex = new HashMap<Integer, Map<Integer, Map<Integer, List<HistoryState>>>>();
 		_stocks = new LinkedList<StockState>();
 		_stocksIndex = new HashMap<Integer, Map<Integer, StockState>>();
+
+		_beginTime = System.currentTimeMillis();
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {

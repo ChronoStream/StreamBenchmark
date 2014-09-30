@@ -22,8 +22,8 @@ public class StateMachineSink extends BaseRichBolt {
 		if (_count % 1000 == 0) {
 			_measureElapsedTime = System.currentTimeMillis()
 					- _measureBeginTime;
-			System.out.println("elapsed time for 1000 results="
-					+ _measureElapsedTime + "ms");
+//			System.out.println("elapsed time for 1000 results="
+//					+ _measureElapsedTime + "ms");
 			_measureBeginTime = System.currentTimeMillis();
 			_count = 0;
 		}

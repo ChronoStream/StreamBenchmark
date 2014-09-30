@@ -107,9 +107,9 @@ public class TpccSpout extends BaseRichSpout {
 							d_id, o_id, o_id, o_ol_cnt, newOrder);
 					_collector.emit("order", new Values(orderTuple));
 					for (int ol_number = 0; ol_number < o_ol_cnt; ++ol_number) {
-						String orderlineTuple = BenchmarkLoader.generateOrderLine(
-								w_id, d_id, o_id, ol_number,
-								_scaleParams._numItems, newOrder);
+						String orderlineTuple = BenchmarkLoader
+								.generateOrderLine(w_id, d_id, o_id, ol_number,
+										_scaleParams._numItems, newOrder);
 						_collector
 								.emit("orderline", new Values(orderlineTuple));
 					}
@@ -155,8 +155,7 @@ public class TpccSpout extends BaseRichSpout {
 			_collector.emit("DELIVERY", new Values(param));
 		} else if (x <= 4 + 4 + 4) {
 			String param = _executor.generateOrderStatusParams();
-			_collector
-					.emit("ORDER_STATUS", new Values(param));
+			_collector.emit("ORDER_STATUS", new Values(param));
 		} else if (x <= 43 + 4 + 4 + 4) {
 			String param = _executor.generatePaymentParams();
 			_collector.emit("PAYMENT", new Values(param));
