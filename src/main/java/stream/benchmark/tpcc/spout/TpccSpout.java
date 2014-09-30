@@ -181,12 +181,13 @@ public class TpccSpout extends BaseRichSpout {
 		declarer.declareStream("neworder", new Fields("tuple"));
 		declarer.declareStream("orderline", new Fields("tuple"));
 		declarer.declareStream("history", new Fields("tuple"));
-		declarer.declareStream("trigger", new Fields("tuple"));
+
 		declarer.declareStream("DELIVERY", new Fields("param"));
 		declarer.declareStream("NEW_ORDER", new Fields("param"));
 		declarer.declareStream("ORDER_STATUS", new Fields("param"));
 		declarer.declareStream("PAYMENT", new Fields("param"));
 		declarer.declareStream("STOCK_LEVEL", new Fields("param"));
+
 	}
 
 }

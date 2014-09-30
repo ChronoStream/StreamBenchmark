@@ -21,6 +21,8 @@ public class TpcchSpout extends BaseRichSpout {
 	private int _numEmittedCustomers = 0;
 	private int _numEmittedOrders = 0;
 	private int _numEmittedStocks = 0;
+	private int _numEmittedNations = 0;
+	private int _numEmittedRegions = 0;
 
 	private ScaleParams _scaleParams;
 	private BenchmarkExecutor _executor;
@@ -37,6 +39,17 @@ public class TpcchSpout extends BaseRichSpout {
 	}
 
 	public void nextTuple() {
+		for (; _numEmittedNations < BenchmarkConstant.NUM_NATION_KEY; ++_numEmittedNations) {
+			String tuple = BenchmarkLoader.generateNation(_numEmittedNations
+					+ BenchmarkConstant.INITIAL_NATION_KEY);
+			_collector.emit("nation", new Values(tuple));
+		}
+
+		for (; _numEmittedRegions < BenchmarkConstant.NUM_REGION; ++_numEmittedRegions) {
+			String tuple = BenchmarkLoader.generateRegion(_numEmittedRegions);
+			_collector.emit("region", new Values(tuple));
+		}
+
 		// generate items here, correct
 		if (_numEmittedItems < _scaleParams._numItems) {
 			if (_numEmittedItems == 0) {
@@ -107,9 +120,9 @@ public class TpcchSpout extends BaseRichSpout {
 							d_id, o_id, o_id, o_ol_cnt, newOrder);
 					_collector.emit("order", new Values(orderTuple));
 					for (int ol_number = 0; ol_number < o_ol_cnt; ++ol_number) {
-						String orderlineTuple = BenchmarkLoader.generateOrderLine(
-								w_id, d_id, o_id, ol_number,
-								_scaleParams._numItems, newOrder);
+						String orderlineTuple = BenchmarkLoader
+								.generateOrderLine(w_id, d_id, o_id, ol_number,
+										_scaleParams._numItems, newOrder);
 						_collector
 								.emit("orderline", new Values(orderlineTuple));
 					}
@@ -136,6 +149,10 @@ public class TpcchSpout extends BaseRichSpout {
 				String stockTuple = BenchmarkLoader.generateStock(w_id, i_id,
 						original);
 				_collector.emit("stock", new Values(stockTuple));
+
+				String supplierTuple = BenchmarkLoader.generateSupplier(i_id,
+						w_id);
+				_collector.emit("supplier", new Values(supplierTuple));
 				++_numEmittedStocks;
 				return;
 			}
@@ -155,8 +172,7 @@ public class TpcchSpout extends BaseRichSpout {
 			_collector.emit("DELIVERY", new Values(param));
 		} else if (x <= 4 + 4 + 4) {
 			String param = _executor.generateOrderStatusParams();
-			_collector
-					.emit("ORDER_STATUS", new Values(param));
+			_collector.emit("ORDER_STATUS", new Values(param));
 		} else if (x <= 43 + 4 + 4 + 4) {
 			String param = _executor.generatePaymentParams();
 			_collector.emit("PAYMENT", new Values(param));
@@ -182,7 +198,11 @@ public class TpcchSpout extends BaseRichSpout {
 		declarer.declareStream("neworder", new Fields("tuple"));
 		declarer.declareStream("orderline", new Fields("tuple"));
 		declarer.declareStream("history", new Fields("tuple"));
-		
+
+		declarer.declareStream("supplier", new Fields("tuple"));
+		declarer.declareStream("region", new Fields("tuple"));
+		declarer.declareStream("nation", new Fields("tuple"));
+
 		declarer.declareStream("DELIVERY", new Fields("param"));
 		declarer.declareStream("NEW_ORDER", new Fields("param"));
 		declarer.declareStream("ORDER_STATUS", new Fields("param"));

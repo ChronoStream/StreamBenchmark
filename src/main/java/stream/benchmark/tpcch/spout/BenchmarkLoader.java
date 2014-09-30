@@ -33,7 +33,8 @@ public class BenchmarkLoader {
 		return sb.toString();
 	}
 
-	// warehouse_id, warehouse_name, warehouse_address, warehouse_tax, warehouse_ytd
+	// warehouse_id, warehouse_name, warehouse_address, warehouse_tax,
+	// warehouse_ytd
 	static public String generateWarehouse(int w_id) {
 		double w_tax = generateTax();
 		double w_ytd = BenchmarkConstant.INITIAL_W_YTD;
@@ -179,8 +180,8 @@ public class BenchmarkLoader {
 		return sb.toString();
 	}
 
-	static public String generateOrderLine(int ol_w_id, int ol_d_id, int ol_o_id,
-			int ol_number, int max_items, boolean newOrder) {
+	static public String generateOrderLine(int ol_w_id, int ol_d_id,
+			int ol_o_id, int ol_number, int max_items, boolean newOrder) {
 		int ol_i_id = BenchmarkRandom.getNumber(1, max_items);
 		int ol_supply_w_id = ol_w_id;
 		long ol_delivery_d = System.currentTimeMillis();
@@ -284,6 +285,55 @@ public class BenchmarkLoader {
 		sb.append(h_amount);
 		sb.append(",");
 		sb.append(h_data);
+		return sb.toString();
+	}
+
+	static public String generateSupplier(int i_id, int w_id) {
+		int suppkey = (i_id * w_id) % 10000;
+		String su_name = BenchmarkRandom.getAstring(
+				BenchmarkConstant.MAX_SUPPLIER_NAME,
+				BenchmarkConstant.MAX_SUPPLIER_NAME);
+		String su_address = BenchmarkRandom.getAstring(
+				BenchmarkConstant.MAX_SUPPLIER_ADDRESS,
+				BenchmarkConstant.MAX_SUPPLIER_ADDRESS);
+		int nation_key = BenchmarkRandom.getNumber(
+				BenchmarkConstant.INITIAL_NATION_KEY,
+				BenchmarkConstant.INITIAL_NATION_KEY
+						+ BenchmarkConstant.NUM_NATION_KEY - 1);
+		StringBuilder sb = new StringBuilder();
+		sb.append(suppkey);
+		sb.append(",");
+		sb.append(su_name);
+		sb.append(",");
+		sb.append(su_address);
+		sb.append(",");
+		sb.append(nation_key);
+		return sb.toString();
+	}
+
+	static public String generateRegion(int region_id) {
+		String r_name = BenchmarkRandom.getAstring(
+				BenchmarkConstant.MAX_REGION_NAME,
+				BenchmarkConstant.MAX_REGION_NAME);
+		StringBuilder sb = new StringBuilder();
+		sb.append(region_id);
+		sb.append(",");
+		sb.append(r_name);
+		return sb.toString();
+	}
+
+	static public String generateNation(int nation_id) {
+		String nation_name = BenchmarkRandom.getAstring(
+				BenchmarkConstant.MAX_NATION_NAME,
+				BenchmarkConstant.MAX_NATION_NAME);
+		int region_id = BenchmarkRandom.getNumber(0,
+				BenchmarkConstant.NUM_REGION - 1);
+		StringBuilder sb = new StringBuilder();
+		sb.append(nation_id);
+		sb.append(",");
+		sb.append(nation_name);
+		sb.append(",");
+		sb.append(region_id);
 		return sb.toString();
 	}
 

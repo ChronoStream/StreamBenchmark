@@ -274,37 +274,40 @@ public class TableState {
 		String _data;
 	}
 
-	protected static class SupplierState {
-		public SupplierState(int _supplier_id, String _name, int _nation_key) {
-			this._supplier_id = _supplier_id;
-			this._name = _name;
-			this._nation_key = _nation_key;
-		}
-
-		int _supplier_id;
-		String _name;
-		int _nation_key;
-	}
-
 	protected static class NationState {
-		public NationState(int _nation_key, String _name, int _region_key) {
-			this._nation_key = _nation_key;
-			this._name = _name;
-			this._region_key = _region_key;
+		public NationState(int _n_id, String _n_name, int _r_id) {
+			this._n_id = _n_id;
+			this._n_name = _n_name;
+			this._r_id = _r_id;
 		}
 
-		int _nation_key;
-		String _name;
-		int _region_key;
+		int _n_id;
+		String _n_name;
+		int _r_id;
 	}
 
 	protected static class RegionState {
-		public RegionState(int _region_key, String _region_name) {
-			this._region_key = _region_key;
-			this._region_name = _region_name;
+		public RegionState(int _r_id, String _r_name) {
+			this._r_id = _r_id;
+			this._r_name = _r_name;
 		}
 
-		int _region_key;
-		String _region_name;
+		int _r_id;
+		String _r_name;
+	}
+
+	protected static class SupplierState {
+		public SupplierState(int _su_id, String _su_name, String _su_address,
+				int _n_id) {
+			this._su_id = _su_id;
+			this._su_name = _su_name;
+			this._su_address = _su_address;
+			this._n_id = _n_id;
+		}
+
+		int _su_id;
+		String _su_name;
+		String _su_address;
+		int _n_id;
 	}
 }

@@ -88,50 +88,51 @@ public class Q1HeapBolt extends BaseRichBolt {
 		if (streamname == "DELIVERY" || streamname == "NEW_ORDER"
 				|| streamname == "ORDER_STATUS" || streamname == "PAYMENT"
 				|| streamname == "STOCK_LEVEL") {
-			if (System.currentTimeMillis() - _beginTime < 2000) {
-				return;
-			}
-			StringBuilder sb = new StringBuilder();
-			for (Integer warehouse : _orderlinesTree.keySet()) {
-				for (Integer district : _orderlinesTree.get(warehouse).keySet()) {
-					int quantity_num = 0;
-					int quantity_sum = 0;
-					int amount_num = 0;
-					int amount_sum = 0;
-					for (OrderLineState state : _orderlinesTree.get(warehouse)
-							.get(district)) {
-						if (System.currentTimeMillis() - state._ol_delivery_d < 10000) {
-							quantity_num += 1;
-							quantity_sum += state._ol_quantity;
-							amount_num += 1;
-							amount_sum += state._ol_amount;
+			if (System.currentTimeMillis() - _beginTime >= 2000) {
+				StringBuilder sb = new StringBuilder();
+				for (Integer warehouse : _orderlinesTree.keySet()) {
+					for (Integer district : _orderlinesTree.get(warehouse)
+							.keySet()) {
+						int quantity_num = 0;
+						int quantity_sum = 0;
+						int amount_num = 0;
+						int amount_sum = 0;
+						for (OrderLineState state : _orderlinesTree.get(
+								warehouse).get(district)) {
+							if (System.currentTimeMillis()
+									- state._ol_delivery_d < 10000) {
+								quantity_num += 1;
+								quantity_sum += state._ol_quantity;
+								amount_num += 1;
+								amount_sum += state._ol_amount;
+							}
 						}
+						sb.append(warehouse);
+						sb.append(", ");
+						sb.append(district);
+						sb.append(", ");
+						sb.append(quantity_sum);
+						sb.append(", ");
+						if (quantity_num == 0) {
+							sb.append(0);
+						} else {
+							sb.append(quantity_sum / quantity_num);
+						}
+						sb.append(", ");
+						sb.append(amount_sum);
+						sb.append(", ");
+						if (amount_num == 0) {
+							sb.append(0);
+						} else {
+							sb.append(amount_sum / amount_num);
+						}
+						_collector.emit(new Values(sb.toString()));
+						sb.setLength(0);
 					}
-					sb.append(warehouse);
-					sb.append(", ");
-					sb.append(district);
-					sb.append(", ");
-					sb.append(quantity_sum);
-					sb.append(", ");
-					if (quantity_num == 0) {
-						sb.append(0);
-					} else {
-						sb.append(quantity_sum / quantity_num);
-					}
-					sb.append(", ");
-					sb.append(amount_sum);
-					sb.append(", ");
-					if (amount_num == 0) {
-						sb.append(0);
-					} else {
-						sb.append(amount_sum / amount_num);
-					}
-					_collector.emit(new Values(sb.toString()));
-					sb.setLength(0);
 				}
+				System.out.println("trigger");
+				_beginTime = System.currentTimeMillis();
 			}
-			System.out.println("trigger");
-			_beginTime = System.currentTimeMillis();
 		}
 	}
 

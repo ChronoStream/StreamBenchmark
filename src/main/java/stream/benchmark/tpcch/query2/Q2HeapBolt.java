@@ -21,7 +21,7 @@ public class Q2HeapBolt extends BaseRichBolt {
 	private static final long serialVersionUID = 1L;
 
 	private OutputCollector _collector;
-	
+
 	long _beginTime;
 
 	// s_i_id -> <s_w_id, s_quantity>
@@ -36,9 +36,11 @@ public class Q2HeapBolt extends BaseRichBolt {
 		String[] fields = tuple.split(",");
 		String streamname = input.getSourceStreamId();
 		if (streamname == "item") {
+			// item_id, i_name, i_price
 			_items.put(Integer.valueOf(fields[0]), new ItemState(fields[2],
 					Double.valueOf(fields[3])));
 		} else if (streamname.equals("supplier")) {
+			// suppkey, su_name, nation_key
 			_suppliers.put(Integer.valueOf(fields[0]), new SupplierState(
 					fields[1], Integer.valueOf(fields[3])));
 		} else if (streamname.equals("stock")) {
@@ -50,8 +52,10 @@ public class Q2HeapBolt extends BaseRichBolt {
 			_stocks.get(item_id).add(
 					new StockState(warehouse_id, Integer.valueOf(fields[2])));
 		} else if (streamname.equals("region")) {
+			// r_id, r_name
 			_regions.put(Integer.valueOf(fields[0]), fields[1]);
 		} else if (streamname.equals("nation")) {
+			// n_id, n_name, r_name
 			_nations.put(Integer.valueOf(fields[0]), new NationState(fields[1],
 					Integer.valueOf(fields[2])));
 		}
@@ -59,25 +63,24 @@ public class Q2HeapBolt extends BaseRichBolt {
 		if (streamname == "DELIVERY" || streamname == "NEW_ORDER"
 				|| streamname == "ORDER_STATUS" || streamname == "PAYMENT"
 				|| streamname == "STOCK_LEVEL") {
-			if (System.currentTimeMillis() - _beginTime < 2000) {
-				return;
-			}
-			for (Integer stock_id : _stocks.keySet()){
-				int max_quantity = -1;
-				int max_supplier_id = -1;
-				for (StockState tmpstock : _stocks.get(stock_id)){
-					int supplier_key = (tmpstock._w_id * stock_id) % 10000;
-					int nation_id = _suppliers.get(supplier_key)._su_nation_id;
-					int region_id = _nations.get(nation_id)._region_key;
-					
-					if (!_regions.get(region_id).equals("Europe")){
-						continue;
+			if (System.currentTimeMillis() - _beginTime > 2000) {
+				for (Integer stock_id : _stocks.keySet()) {
+					int max_quantity = -1;
+					int max_supplier_id = -1;
+					for (StockState tmpstock : _stocks.get(stock_id)) {
+						int supplier_key = (tmpstock._w_id * stock_id) % 10000;
+						int nation_id = _suppliers.get(supplier_key)._su_nation_id;
+						int region_id = _nations.get(nation_id)._region_key;
+
+						if (!_regions.get(region_id).equals("Europe")) {
+							continue;
+						}
+						if (tmpstock._quantity > max_quantity) {
+							max_quantity = tmpstock._quantity;
+							max_supplier_id = supplier_key;
+						}
+						_collector.emit(new Values(""));
 					}
-					if (tmpstock._quantity > max_quantity){
-						max_quantity = tmpstock._quantity;
-						max_supplier_id = supplier_key;
-					}
-					_collector.emit(new Values(""));
 				}
 			}
 		}
@@ -92,7 +95,7 @@ public class Q2HeapBolt extends BaseRichBolt {
 		_nations = new HashMap<Integer, NationState>();
 		_regions = new HashMap<Integer, String>();
 		_items = new HashMap<Integer, ItemState>();
-		
+
 		_beginTime = System.currentTimeMillis();
 	}
 

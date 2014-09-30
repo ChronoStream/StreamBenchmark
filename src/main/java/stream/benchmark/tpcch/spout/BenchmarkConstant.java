@@ -85,7 +85,17 @@ public class BenchmarkConstant {
 
 	//New order constants
 	public static final int INITIAL_NEW_ORDERS_PER_DISTRICT = 9; // origin : 900
-
+	
+	public static final int MAX_SUPPLIER_NAME = 20;
+	public static final int MAX_SUPPLIER_ADDRESS = 40;
+	
+	public static final int INITIAL_NATION_KEY = 48;
+	public static final int NUM_NATION_KEY = 75;
+	public static final int MAX_NATION_NAME = 20;
+	
+	public static final int NUM_REGION = 5;
+	public static final int MAX_REGION_NAME = 20;
+	
 	//TPC-C 2.4.3.4 (page 31) says this must be displayed when new order rolls back.
 	public static final String INVALID_ITEM_MESSAGE = "Item number is not valid";
 
@@ -110,4 +120,7 @@ public class BenchmarkConstant {
 	public static final String TABLENAME_NEW_ORDER  = "NEW_ORDER";
 	public static final String TABLENAME_ORDER_LINE = "ORDER_LINE";
 	public static final String TABLENAME_HISTORY    = "HISTORY";
+	
+	
+	
 }
