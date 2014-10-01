@@ -158,7 +158,7 @@ public class TableState {
 	// o_carrier_id int, o_ol_cnt int, o_all_local int
 	public static class OrderState {
 		public OrderState(int _id, int _c_id, int _d_id, int _w_id,
-				long _entry_d, int _carrier_id, double _ol_cnt,
+				long _entry_d, int _carrier_id, int _ol_cnt,
 				boolean _all_local) {
 			this._id = _id;
 			this._c_id = _c_id;
@@ -176,7 +176,7 @@ public class TableState {
 		public int _w_id;
 		public long _entry_d;
 		public int _carrier_id;
-		public double _ol_cnt;
+		public int _ol_cnt;
 		public boolean _all_local;
 	}
 

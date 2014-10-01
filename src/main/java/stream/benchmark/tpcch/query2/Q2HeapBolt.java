@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import stream.benchmark.toolkits.MemoryReport;
-import stream.benchmark.tpcch.query.FetchResult.NewOrderItemInfo;
+import stream.benchmark.tpcch.query.InnerState.NewOrderItemInfo;
 import stream.benchmark.tpcch.query.TableState.HistoryState;
 import stream.benchmark.tpcch.query.TableState.ItemState;
 import stream.benchmark.tpcch.query.TableState.NationState;
@@ -168,7 +168,7 @@ public class Q2HeapBolt extends BaseRichBolt {
 			int warehouse_id = Integer.valueOf(fields[3]);
 			OrderState order = new OrderState(order_id, customer_id,
 					district_id, warehouse_id, Long.valueOf(fields[4]),
-					Integer.valueOf(fields[5]), Double.valueOf(fields[6]),
+					Integer.valueOf(fields[5]), Integer.valueOf(fields[6]),
 					Boolean.valueOf(fields[7]));
 			_orders.add(order);
 			if (!_ordersIndex.containsKey(warehouse_id)) {
@@ -357,8 +357,8 @@ public class Q2HeapBolt extends BaseRichBolt {
 
 			// createOrder : d_next_o_id, d_id, w_id, c_id, o_entry_d,
 			// o_carrier_id, ol_cnt, all_local
-			OrderState orderState = new OrderState(d_next_o_id, d_id, w_id,
-					c_id, o_entry_d, o_carrier_id, ol_cnt, all_local);
+			OrderState orderState = new OrderState(d_next_o_id, c_id, d_id,
+					w_id, o_entry_d, o_carrier_id, ol_cnt, all_local);
 			_orders.add(orderState);
 			_ordersIndex.get(w_id).get(d_id).put(d_next_o_id, orderState);
 			// createNewOrder : d_next_o_id, d_id, w_id

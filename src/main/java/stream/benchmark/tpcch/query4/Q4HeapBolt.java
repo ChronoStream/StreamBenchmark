@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import stream.benchmark.toolkits.MemoryReport;
-import stream.benchmark.tpcch.query.FetchResult.NewOrderItemInfo;
+import stream.benchmark.tpcch.query.InnerState.NewOrderItemInfo;
 import stream.benchmark.tpcch.query.TableState.HistoryState;
 import stream.benchmark.tpcch.query.TableState.ItemState;
 import stream.benchmark.tpcch.query.TableState.NationState;
@@ -33,6 +33,16 @@ import backtype.storm.tuple.Values;
 public class Q4HeapBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
+
+	private class ResultState {
+		public ResultState(int _o_ol_cnt, int _order_count) {
+			this._o_ol_cnt = _o_ol_cnt;
+			this._order_count = _order_count;
+		}
+
+		int _o_ol_cnt;
+		int _order_count;
+	}
 
 	private OutputCollector _collector;
 
@@ -168,7 +178,7 @@ public class Q4HeapBolt extends BaseRichBolt {
 			int warehouse_id = Integer.valueOf(fields[3]);
 			OrderState order = new OrderState(order_id, customer_id,
 					district_id, warehouse_id, Long.valueOf(fields[4]),
-					Integer.valueOf(fields[5]), Double.valueOf(fields[6]),
+					Integer.valueOf(fields[5]), Integer.valueOf(fields[6]),
 					Boolean.valueOf(fields[7]));
 			_orders.add(order);
 			if (!_ordersIndex.containsKey(warehouse_id)) {
@@ -357,8 +367,8 @@ public class Q4HeapBolt extends BaseRichBolt {
 
 			// createOrder : d_next_o_id, d_id, w_id, c_id, o_entry_d,
 			// o_carrier_id, ol_cnt, all_local
-			OrderState orderState = new OrderState(d_next_o_id, d_id, w_id,
-					c_id, o_entry_d, o_carrier_id, ol_cnt, all_local);
+			OrderState orderState = new OrderState(d_next_o_id, c_id, d_id,
+					w_id, o_entry_d, o_carrier_id, ol_cnt, all_local);
 			_orders.add(orderState);
 			_ordersIndex.get(w_id).get(d_id).put(d_next_o_id, orderState);
 			// createNewOrder : d_next_o_id, d_id, w_id
@@ -504,86 +514,36 @@ public class Q4HeapBolt extends BaseRichBolt {
 				// /////////////////////////////////////////////////////////////////
 				StringBuilder sb = new StringBuilder();
 
-				for (Integer warehouse : _newordersIndex.keySet()) {
-					for (Integer district : _newordersIndex.get(warehouse)
-							.keySet()) {
-						for (Integer order : _newordersIndex.get(warehouse)
-								.get(district)) {
-							if (_newordersIndex.get(warehouse).get(district)
-									.contains(order)) {
-								if (System.currentTimeMillis()
-										- _ordersIndex.get(warehouse)
-												.get(district).get(order)._entry_d < 1000) {
-									double ol_amount = 0;
-									for (OrderLineState tmpol : _orderlinesIndex
-											.get(warehouse).get(district)
-											.get(order)) {
-										ol_amount += tmpol._ol_amount;
-									}
-									int customer_id = _ordersIndex
-											.get(warehouse).get(district)
-											.get(order)._c_id;
-									String province = _customersIndex
-											.get(warehouse).get(district)
-											.get(customer_id)._state;
-									sb.append(warehouse);
-									sb.append(", ");
-									sb.append(district);
-									sb.append(", ");
-									sb.append(customer_id);
-									sb.append(", ");
-									sb.append(province);
-									sb.append(", ");
-									sb.append(ol_amount);
-									_collector.emit(new Values(sb.toString()));
-									sb.setLength(0);
-								}
+				Map<Integer, ResultState> results = new HashMap<Integer, ResultState>();
+				for (OrderState order : _orders) {
+					if (System.currentTimeMillis() - order._entry_d < 10000) {
+						boolean isDelivered = false;
+						for (OrderLineState oltmp : _orderlinesIndex
+								.get(order._w_id).get(order._d_id)
+								.get(order._id)) {
+							if (oltmp._ol_delivery_d > order._entry_d) {
+								isDelivered = true;
+								break;
 							}
+						}
+						if (isDelivered) {
+							int ol_cnt = order._ol_cnt;
+							if (!results.containsKey(ol_cnt)) {
+								results.put(ol_cnt, new ResultState(ol_cnt, 0));
+							}
+							results.get(ol_cnt)._order_count += 1;
 						}
 					}
 				}
 
-				int max_quantity = -1;
-				int max_item_id = -1;
-				for (int s_i_id : _stocksIndex.keySet()) {
-					int local_quantity = 0;
-					for (int warehouse_id : _stocksIndex.get(s_i_id).keySet()) {
-						int supplier_id = (s_i_id * warehouse_id) % 10000;
-						int nation_id = _suppliersIndex.get(supplier_id)._n_id;
-						String region_name = _regionsIndex.get(_nationsIndex
-								.get(nation_id)._r_id)._r_name;
-						if (region_name.equals("EUROPE")) {
-							local_quantity += _stocksIndex.get(s_i_id).get(
-									warehouse_id)._quantity;
-						}
-					}
-					if (local_quantity > max_quantity) {
-						max_quantity = local_quantity;
-						max_item_id = s_i_id;
-					}
+				for (ResultState result : results.values()) {
+					sb.append(result._o_ol_cnt);
+					sb.append(", ");
+					sb.append(result._order_count);
+					_collector.emit(new Values(sb.toString()));
+					sb.setLength(0);
 				}
-				if (max_item_id != -1) {
-					for (int warehouse_id : _stocksIndex.get(max_item_id)
-							.keySet()) {
-						int supplier_id = max_item_id * warehouse_id;
-						int nation_id = _suppliersIndex.get(supplier_id)._n_id;
-						String region_name = _regionsIndex.get(_nationsIndex
-								.get(nation_id)._r_id)._r_name;
-						if (region_name.equals("EUROPE")) {
-							sb.append(max_item_id);
-							sb.append(", ");
-							sb.append(warehouse_id);
-							sb.append(", ");
-							sb.append(_nationsIndex.get(nation_id)._n_name);
-							sb.append(", ");
-							sb.append(region_name);
-							sb.append(", ");
-							sb.append(max_quantity);
-							_collector.emit(new Values(sb.toString()));
-							sb.setLength(0);
-						}
-					}
-				}
+
 				_beginTime = System.currentTimeMillis();
 			}
 		}

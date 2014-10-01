@@ -1,4 +1,4 @@
-package stream.benchmark.tpcch.query3;
+package stream.benchmark.tpcch.query6;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,7 +30,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class Q3HeapBolt extends BaseRichBolt {
+public class Q6HeapBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
 
@@ -504,35 +504,41 @@ public class Q3HeapBolt extends BaseRichBolt {
 				// /////////////////////////////////////////////////////////////////
 				StringBuilder sb = new StringBuilder();
 
-				for (NewOrderState neworder : _neworders) {
-					int warehouse = neworder._w_id;
-					int district = neworder._d_id;
-					int order = neworder._o_id;
-					if (_newordersIndex.get(warehouse).get(district)
-							.contains(order)) {
-						if (System.currentTimeMillis()
-								- _ordersIndex.get(warehouse).get(district)
-										.get(order)._entry_d < 1000) {
-							double ol_amount = 0;
-							for (OrderLineState tmpol : _orderlinesIndex
-									.get(warehouse).get(district).get(order)) {
-								ol_amount += tmpol._ol_amount;
+				for (Integer warehouse : _newordersIndex.keySet()) {
+					for (Integer district : _newordersIndex.get(warehouse)
+							.keySet()) {
+						for (Integer order : _newordersIndex.get(warehouse)
+								.get(district)) {
+							if (_newordersIndex.get(warehouse).get(district)
+									.contains(order)) {
+								if (System.currentTimeMillis()
+										- _ordersIndex.get(warehouse)
+												.get(district).get(order)._entry_d < 1000) {
+									double ol_amount = 0;
+									for (OrderLineState tmpol : _orderlinesIndex
+											.get(warehouse).get(district)
+											.get(order)) {
+										ol_amount += tmpol._ol_amount;
+									}
+									int customer_id = _ordersIndex
+											.get(warehouse).get(district)
+											.get(order)._c_id;
+									String province = _customersIndex
+											.get(warehouse).get(district)
+											.get(customer_id)._state;
+									sb.append(warehouse);
+									sb.append(", ");
+									sb.append(district);
+									sb.append(", ");
+									sb.append(customer_id);
+									sb.append(", ");
+									sb.append(province);
+									sb.append(", ");
+									sb.append(ol_amount);
+									_collector.emit(new Values(sb.toString()));
+									sb.setLength(0);
+								}
 							}
-							int customer_id = _ordersIndex.get(warehouse)
-									.get(district).get(order)._c_id;
-							String province = _customersIndex.get(warehouse)
-									.get(district).get(customer_id)._state;
-							sb.append(warehouse);
-							sb.append(", ");
-							sb.append(district);
-							sb.append(", ");
-							sb.append(customer_id);
-							sb.append(", ");
-							sb.append(province);
-							sb.append(", ");
-							sb.append(ol_amount);
-							_collector.emit(new Values(sb.toString()));
-							sb.setLength(0);
 						}
 					}
 				}

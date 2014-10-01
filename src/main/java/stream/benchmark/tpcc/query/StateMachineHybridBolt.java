@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 import stream.benchmark.toolkits.MemoryReport;
-import stream.benchmark.tpcc.query.FetchResult.NewOrderItemInfo;
-import stream.benchmark.tpcc.query.FetchResult.NewOrderItemData;
+import stream.benchmark.tpcc.query.InnerState.NewOrderItemInfo;
+import stream.benchmark.tpcc.query.InnerState.NewOrderItemData;
 import stream.benchmark.tpcc.query.InnerState.InnerCustomerState;
 import stream.benchmark.tpcc.spout.BenchmarkConstant;
 import stream.benchmark.tpcc.spout.BenchmarkRandom;
@@ -360,9 +360,9 @@ public class StateMachineHybridBolt extends BaseRichBolt {
 
 				++_numOrdersAccess;
 				_ordersInsertion.setInt(1, d_next_o_id);
-				_ordersInsertion.setInt(2, d_id);
-				_ordersInsertion.setInt(3, w_id);
-				_ordersInsertion.setInt(4, c_id);
+				_ordersInsertion.setInt(2, c_id);
+				_ordersInsertion.setInt(3, d_id);
+				_ordersInsertion.setInt(4, w_id);
 				_ordersInsertion.setLong(5, o_entry_d);
 				_ordersInsertion.setInt(6, o_carrier_id);
 				_ordersInsertion.setDouble(7, ol_cnt);
