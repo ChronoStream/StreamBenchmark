@@ -1,4 +1,4 @@
-package stream.benchmark.tpcch.query;
+package stream.benchmark.tpcch.query5;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -8,7 +8,6 @@ import java.util.Map;
 
 import stream.benchmark.toolkits.MemoryReport;
 import stream.benchmark.tpcch.query.FetchResult.NewOrderItemInfo;
-import stream.benchmark.tpcch.query.FetchResult.NewOrderItemData;
 import stream.benchmark.tpcch.query.TableState.HistoryState;
 import stream.benchmark.tpcch.query.TableState.ItemState;
 import stream.benchmark.tpcch.query.TableState.NationState;
@@ -31,7 +30,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class SimpleStateMachineBolt extends BaseRichBolt {
+public class Q5HeapBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
 
@@ -50,7 +49,6 @@ public class SimpleStateMachineBolt extends BaseRichBolt {
 	private Map<Integer, Map<Integer, Map<Integer, OrderState>>> _ordersIndex;
 	private List<NewOrderState> _neworders;
 	private Map<Integer, Map<Integer, List<Integer>>> _newordersIndex;
-	private List<OrderLineState> _orderlines;
 	private Map<Integer, Map<Integer, Map<Integer, List<OrderLineState>>>> _orderlinesIndex;
 	private List<HistoryState> _histories;
 	private Map<Integer, Map<Integer, Map<Integer, List<HistoryState>>>> _historiesIndex;
@@ -210,7 +208,6 @@ public class SimpleStateMachineBolt extends BaseRichBolt {
 					Integer.valueOf(fields[4]), Integer.valueOf(fields[5]),
 					Long.valueOf(fields[6]), Integer.valueOf(fields[7]),
 					Double.valueOf(fields[8]), fields[9]);
-			_orderlines.add(orderline);
 			if (!_orderlinesIndex.containsKey(warehouse_id)) {
 				_orderlinesIndex
 						.put(warehouse_id,
@@ -321,10 +318,6 @@ public class SimpleStateMachineBolt extends BaseRichBolt {
 				}
 				// updateCustomer : ol_total, c_id, d_id, w_id
 				_customersIndex.get(w_id).get(d_id).get(c_id)._balance += sum;
-				String result = String.format(
-						"delivery result: district_id=%d, order_id=%d", d_id,
-						no_o_id);
-				_collector.emit(new Values(result));
 			}
 		} else if (streamname == "NEW_ORDER") {
 			int w_id = Integer.valueOf(fields[0]);
@@ -352,18 +345,9 @@ public class SimpleStateMachineBolt extends BaseRichBolt {
 				item_infos.add(new NewOrderItemInfo(tmpItem._price,
 						tmpItem._name, tmpItem._data));
 			}
-			// getWarehouseTaxRate
-			double w_tax = _warehousesIndex.get(w_id)._tax;
-
 			// getDistrict : d_id, w_id
 			DistrictState tmpDistrict = _districtsIndex.get(w_id).get(d_id);
-			double d_tax = tmpDistrict._tax;
 			int d_next_o_id = tmpDistrict._next_o_id;
-
-			// getCustomer : w_id, d_id, c_id
-			CustomerState tmpCustomer = _customersIndex.get(w_id).get(d_id)
-					.get(c_id);
-			double c_discount = tmpCustomer._discount;
 
 			int ol_cnt = i_ids.size();
 			int o_carrier_id = BenchmarkConstant.NULL_CARRIER_ID;
@@ -383,8 +367,6 @@ public class SimpleStateMachineBolt extends BaseRichBolt {
 			_neworders.add(neworderState);
 			_newordersIndex.get(w_id).get(d_id).add(d_next_o_id);
 
-			List<NewOrderItemData> item_datas = new LinkedList<NewOrderItemData>();
-			double total = 0;
 			for (int i = 0; i < i_ids.size(); ++i) {
 				int ol_number = i + 1;
 				int ol_supply_w_id = i_w_ids.get(i);
@@ -399,7 +381,6 @@ public class SimpleStateMachineBolt extends BaseRichBolt {
 				int s_ytd = stockInfo._ytd;
 				int s_order_cnt = stockInfo._order_cnt;
 				int s_remote_cnt = stockInfo._remote_cnt;
-				String s_data = stockInfo._data;
 				String s_dist = stockInfo._dists.get(d_id - 1);
 				s_ytd += ol_quantity;
 				if (s_quantity >= ol_quantity + 10) {
@@ -416,81 +397,19 @@ public class SimpleStateMachineBolt extends BaseRichBolt {
 				stockInfo._order_cnt = s_order_cnt;
 				stockInfo._remote_cnt = s_remote_cnt;
 
-				String brand_generic;
-				if (tmpItemInfo._i_data
-						.contains(BenchmarkConstant.ORIGINAL_STRING) == true
-						&& s_data.contains(BenchmarkConstant.ORIGINAL_STRING) == true) {
-					brand_generic = "B";
-				} else {
-					brand_generic = "G";
-				}
 				double ol_amount = ol_quantity * tmpItemInfo._i_price;
-				total += ol_amount;
 				// create new order line
 				OrderLineState olState = new OrderLineState(d_next_o_id, d_id,
 						w_id, ol_number, ol_i_id, ol_supply_w_id, o_entry_d,
 						ol_quantity, ol_amount, s_dist);
-				_orderlines.add(olState);
 				if (!_orderlinesIndex.get(w_id).get(d_id)
 						.containsKey(d_next_o_id)) {
 					_orderlinesIndex.get(w_id).get(d_id)
 							.put(d_next_o_id, new LinkedList<OrderLineState>());
 				}
-
 				_orderlinesIndex.get(w_id).get(d_id).get(d_next_o_id)
 						.add(olState);
-				item_datas.add(new NewOrderItemData(tmpItemInfo._i_name,
-						s_quantity, brand_generic, tmpItemInfo._i_price,
-						ol_amount));
 			}
-			total *= (1 - c_discount) * (1 + w_tax + d_tax);
-			String result = String
-					.format("new_order result: customer_id= %d, warehouse_tax=%f, district_tax=%f, order_id=%d, total=%f",
-							c_id, w_tax, d_tax, d_next_o_id, total);
-			_collector.emit(new Values(result));
-		} else if (streamname == "ORDER_STATUS") {
-			int w_id = Integer.valueOf(fields[0]);
-			int d_id = Integer.valueOf(fields[1]);
-			int c_id = Integer.valueOf(fields[2]);
-			CustomerState tmpCustomer;
-			if (c_id != -1) {
-				tmpCustomer = _customersIndex.get(w_id).get(d_id).get(c_id);
-				// get C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE
-			} else {
-				// Get the midpoint customer's id
-				List<CustomerState> customerList = new LinkedList<CustomerState>();
-				for (CustomerState entry : _customersIndex.get(w_id).get(d_id)
-						.values()) {
-					if (entry._last.equals(fields[3])) {
-						customerList.add(entry);
-					}
-				}
-				tmpCustomer = customerList.get((customerList.size() - 1) / 2);
-			}
-			OrderState lastOrder = null;
-			// getLastOrder : w_id, d_id, c_id
-			Map<Integer, OrderState> tmpOrderList = _ordersIndex.get(w_id).get(
-					d_id);
-			for (OrderState tmpOrder : tmpOrderList.values()) {
-				if (tmpOrder._c_id == tmpCustomer._id) {
-					lastOrder = tmpOrder;
-					break;
-				}
-			}
-			if (lastOrder == null) {
-				_collector.emit(new Values("order_status result: null"));
-			} else {
-				// getOrderLines : w_id, d_id, order[0]
-				for (OrderLineState tmpOrderline : _orderlinesIndex.get(w_id)
-						.get(d_id).get(lastOrder._id)) {
-					String result = String
-							.format("order_status result: customer_id=%d, last_order_id=%d, item_id=%d, balance=%f",
-									tmpCustomer._id, lastOrder._id,
-									tmpOrderline._ol_i_id, tmpCustomer._balance);
-					_collector.emit(new Values(result));
-				}
-			}
-
 		} else if (streamname == "PAYMENT") {
 			int w_id = Integer.valueOf(fields[0]);
 			int d_id = Integer.valueOf(fields[1]);
@@ -539,32 +458,6 @@ public class SimpleStateMachineBolt extends BaseRichBolt {
 						.put(c_id, new LinkedList<HistoryState>());
 			}
 			_historiesIndex.get(c_w_id).get(c_d_id).get(c_id).add(tmpHistory);
-			String result = String
-					.format("payment result: warehouse_id=%d, district_id=%d, customer_id=%d, balance=%f, ytd_payment=%f",
-							w_id, d_id, tmpCustomer._id, tmpCustomer._balance,
-							tmpCustomer._ytd_payment);
-			_collector.emit(new Values(result));
-		} else if (streamname == "STOCK_LEVEL") {
-			int w_id = Integer.valueOf(fields[0]);
-			int d_id = Integer.valueOf(fields[1]);
-			int threshold = Integer.valueOf(fields[2]);
-			// getOId
-			int next_o_id = _districtsIndex.get(w_id).get(d_id)._next_o_id;
-			// getStockCount : w_id, d_id, o_id, (o_id-20), w_id, threshold
-			for (int o_id = next_o_id - 20; o_id < next_o_id; ++o_id) {
-				for (OrderLineState tmpOrderline : _orderlinesIndex.get(w_id)
-						.get(d_id).get(o_id)) {
-					StockState tmpStock = _stocksIndex.get(
-							tmpOrderline._ol_i_id).get(w_id);
-					if (tmpStock._quantity < threshold) {
-						String result = String
-								.format("stock_level result: item_id=%d, warehouse_id=%d, quantity=%d",
-										tmpStock._i_id, tmpStock._w_id,
-										tmpStock._quantity);
-						_collector.emit(new Values(result));
-					}
-				}
-			}
 		}
 
 		if (streamname == "DELIVERY" || streamname == "NEW_ORDER"
@@ -602,16 +495,97 @@ public class SimpleStateMachineBolt extends BaseRichBolt {
 				System.out.println("customer size=" + _customers.size());
 				System.out.println("order size=" + _orders.size());
 				System.out.println("neworder size=" + _neworders.size());
-				System.out.println("orderline size=" + _orderlines.size());
 				System.out.println("history size=" + _histories.size());
 				System.out.println("stock size=" + _stocks.size());
 				System.out.println("region num=" + _regions.size());
 				System.out.println("nation num=" + _nations.size());
 				System.out.println("supplier num=" + _suppliers.size());
 				System.out.println("===================================");
+				// /////////////////////////////////////////////////////////////////
+				StringBuilder sb = new StringBuilder();
+
+				for (Integer warehouse : _newordersIndex.keySet()) {
+					for (Integer district : _newordersIndex.get(warehouse)
+							.keySet()) {
+						for (Integer order : _newordersIndex.get(warehouse)
+								.get(district)) {
+							if (_newordersIndex.get(warehouse).get(district)
+									.contains(order)) {
+								if (System.currentTimeMillis()
+										- _ordersIndex.get(warehouse)
+												.get(district).get(order)._entry_d < 1000) {
+									double ol_amount = 0;
+									for (OrderLineState tmpol : _orderlinesIndex
+											.get(warehouse).get(district)
+											.get(order)) {
+										ol_amount += tmpol._ol_amount;
+									}
+									int customer_id = _ordersIndex
+											.get(warehouse).get(district)
+											.get(order)._c_id;
+									String province = _customersIndex
+											.get(warehouse).get(district)
+											.get(customer_id)._state;
+									sb.append(warehouse);
+									sb.append(", ");
+									sb.append(district);
+									sb.append(", ");
+									sb.append(customer_id);
+									sb.append(", ");
+									sb.append(province);
+									sb.append(", ");
+									sb.append(ol_amount);
+									_collector.emit(new Values(sb.toString()));
+									sb.setLength(0);
+								}
+							}
+						}
+					}
+				}
+
+				int max_quantity = -1;
+				int max_item_id = -1;
+				for (int s_i_id : _stocksIndex.keySet()) {
+					int local_quantity = 0;
+					for (int warehouse_id : _stocksIndex.get(s_i_id).keySet()) {
+						int supplier_id = (s_i_id * warehouse_id) % 10000;
+						int nation_id = _suppliersIndex.get(supplier_id)._n_id;
+						String region_name = _regionsIndex.get(_nationsIndex
+								.get(nation_id)._r_id)._r_name;
+						if (region_name.equals("EUROPE")) {
+							local_quantity += _stocksIndex.get(s_i_id).get(
+									warehouse_id)._quantity;
+						}
+					}
+					if (local_quantity > max_quantity) {
+						max_quantity = local_quantity;
+						max_item_id = s_i_id;
+					}
+				}
+				if (max_item_id != -1) {
+					for (int warehouse_id : _stocksIndex.get(max_item_id)
+							.keySet()) {
+						int supplier_id = max_item_id * warehouse_id;
+						int nation_id = _suppliersIndex.get(supplier_id)._n_id;
+						String region_name = _regionsIndex.get(_nationsIndex
+								.get(nation_id)._r_id)._r_name;
+						if (region_name.equals("EUROPE")) {
+							sb.append(max_item_id);
+							sb.append(", ");
+							sb.append(warehouse_id);
+							sb.append(", ");
+							sb.append(_nationsIndex.get(nation_id)._n_name);
+							sb.append(", ");
+							sb.append(region_name);
+							sb.append(", ");
+							sb.append(max_quantity);
+							_collector.emit(new Values(sb.toString()));
+							sb.setLength(0);
+						}
+					}
+				}
 				_beginTime = System.currentTimeMillis();
 			}
-
 		}
 	}
 
@@ -632,7 +606,6 @@ public class SimpleStateMachineBolt extends BaseRichBolt {
 		_ordersIndex = new HashMap<Integer, Map<Integer, Map<Integer, OrderState>>>();
 		_neworders = new LinkedList<NewOrderState>();
 		_newordersIndex = new HashMap<Integer, Map<Integer, List<Integer>>>();
-		_orderlines = new LinkedList<OrderLineState>();
 		_orderlinesIndex = new HashMap<Integer, Map<Integer, Map<Integer, List<OrderLineState>>>>();
 		_histories = new LinkedList<HistoryState>();
 		_historiesIndex = new HashMap<Integer, Map<Integer, Map<Integer, List<HistoryState>>>>();

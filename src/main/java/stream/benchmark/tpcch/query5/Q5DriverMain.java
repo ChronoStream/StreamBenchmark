@@ -1,4 +1,4 @@
-package stream.benchmark.tpcch.query;
+package stream.benchmark.tpcch.query5;
 
 import stream.benchmark.tpcch.spout.TpcchSpout;
 import backtype.storm.Config;
@@ -6,12 +6,12 @@ import backtype.storm.LocalCluster;
 import backtype.storm.topology.BoltDeclarer;
 import backtype.storm.topology.TopologyBuilder;
 
-public class SimpleDriverMain {
+public class Q5DriverMain {
 
 	public static void main(String[] args) {
 		TopologyBuilder builder = new TopologyBuilder();
 		builder.setSpout("spout", new TpcchSpout());
-		BoltDeclarer bolt = builder.setBolt("bolt", new SimpleStateMachineBolt());
+		BoltDeclarer bolt = builder.setBolt("bolt", new Q5HeapBolt());
 		
 		bolt.globalGrouping("spout", "item");
 		bolt.globalGrouping("spout", "warehouse");
@@ -33,7 +33,7 @@ public class SimpleDriverMain {
 		bolt.globalGrouping("spout", "PAYMENT");
 		bolt.globalGrouping("spout", "STOCK_LEVEL");
 
-		builder.setBolt("sink", new SimpleSink()).globalGrouping("bolt");
+		builder.setBolt("sink", new Q5Sink()).globalGrouping("bolt");
 		
 		Config conf=new Config();
 		conf.setDebug(false);

@@ -7,7 +7,7 @@ public class TableState {
 	// w_street_1 varchar(32), w_street_2 varchar(32), w_city varchar(32),
 	// w_state varchar(2), w_zip varchar(9),
 	// w_tax float, w_ytd float
-	protected static class WarehouseState {
+	public static class WarehouseState {
 		public WarehouseState(int _id, String _name, String _street1,
 				String _street2, String _city, String _state, String _zip,
 				double _tax, double _ytd) {
@@ -22,22 +22,22 @@ public class TableState {
 			this._ytd = _ytd;
 		}
 
-		int _id;
-		String _name;
-		String _street1;
-		String _street2;
-		String _city;
-		String _state;
-		String _zip;
-		double _tax;
-		double _ytd;
+		public int _id;
+		public String _name;
+		public String _street1;
+		public String _street2;
+		public String _city;
+		public String _state;
+		public String _zip;
+		public double _tax;
+		public double _ytd;
 	}
 
 	// d_id smallint, d_w_id smallint, d_name varchar(16),
 	// d_street_1 varchar(32), d_street_2 varchar(32), d_city varchar(32),
 	// d_state varchar(2), d_zip varchar(9),
 	// d_tax float, d_ytd float, d_next_o_id int
-	protected static class DistrictState {
+	public static class DistrictState {
 		public DistrictState(int _id, int _w_id, String _name, String _street1,
 				String _street2, String _city, String _state, String _zip,
 				double _tax, double _ytd, int _next_o_id) {
@@ -54,17 +54,17 @@ public class TableState {
 			this._next_o_id = _next_o_id;
 		}
 
-		int _id;
-		int _w_id;
-		String _name;
-		String _street1;
-		String _street2;
-		String _city;
-		String _state;
-		String _zip;
-		double _tax;
-		double _ytd;
-		int _next_o_id;
+		public int _id;
+		public int _w_id;
+		public String _name;
+		public String _street1;
+		public String _street2;
+		public String _city;
+		public String _state;
+		public String _zip;
+		public double _tax;
+		public double _ytd;
+		public int _next_o_id;
 	}
 
 	// c_id int, c_d_id smallint, c_w_id smallint,
@@ -76,7 +76,7 @@ public class TableState {
 	// c_discount float, c_balance float, c_ytd_payment float, c_payment_cnt
 	// int, c_delivery_cnt int,
 	// c_data varchar(500)
-	protected static class CustomerState {
+	public static class CustomerState {
 		public CustomerState(int _id, int _d_id, int _w_id, String _first,
 				String _middle, String _last, String _street1, String _street2,
 				String _city, String _state, String _zip, String _phone,
@@ -106,32 +106,32 @@ public class TableState {
 			this._data = _data;
 		}
 
-		int _id;
-		int _d_id;
-		int _w_id;
-		String _first;
-		String _middle;
-		String _last;
-		String _street1;
-		String _street2;
-		String _city;
-		String _state;
-		String _zip;
-		String _phone;
-		long _since;
-		String _credit;
-		double _credit_lim;
-		double _discount;
-		double _balance;
-		double _ytd_payment;
-		int _payment_count;
-		int _delivery_count;
-		String _data;
+		public int _id;
+		public int _d_id;
+		public int _w_id;
+		public String _first;
+		public String _middle;
+		public String _last;
+		public String _street1;
+		public String _street2;
+		public String _city;
+		public String _state;
+		public String _zip;
+		public String _phone;
+		public long _since;
+		public String _credit;
+		public double _credit_lim;
+		public double _discount;
+		public double _balance;
+		public double _ytd_payment;
+		public int _payment_count;
+		public int _delivery_count;
+		public String _data;
 	}
 
 	// h_c_id int, h_c_d_id smallint, h_c_w_id smallint, h_d_id smallint, h_w_id
 	// smallint, h_date bigint, h_amount float, h_data varchar(32)
-	protected static class HistoryState {
+	public static class HistoryState {
 		public HistoryState(int _c_id, int _c_d_id, int _c_w_id, int _d_id,
 				int _w_id, long _date, double _amount, String _data) {
 			this._c_id = _c_id;
@@ -144,19 +144,19 @@ public class TableState {
 			this._data = _data;
 		}
 
-		int _c_id;
-		int _c_d_id;
-		int _c_w_id;
-		int _d_id;
-		int _w_id;
-		long _date;
-		double _amount;
-		String _data;
+		public int _c_id;
+		public int _c_d_id;
+		public int _c_w_id;
+		public int _d_id;
+		public int _w_id;
+		public long _date;
+		public double _amount;
+		public String _data;
 	}
 
 	// o_id int, o_c_id int, o_d_id smallint, o_w_id smallint, o_entry_d bigint,
 	// o_carrier_id int, o_ol_cnt int, o_all_local int
-	protected static class OrderState {
+	public static class OrderState {
 		public OrderState(int _id, int _c_id, int _d_id, int _w_id,
 				long _entry_d, int _carrier_id, double _ol_cnt,
 				boolean _all_local) {
@@ -170,27 +170,27 @@ public class TableState {
 			this._all_local = _all_local;
 		}
 
-		int _id;
-		int _c_id;
-		int _d_id;
-		int _w_id;
-		long _entry_d;
-		int _carrier_id;
-		double _ol_cnt;
-		boolean _all_local;
+		public int _id;
+		public int _c_id;
+		public int _d_id;
+		public int _w_id;
+		public long _entry_d;
+		public int _carrier_id;
+		public double _ol_cnt;
+		public boolean _all_local;
 	}
 
 	// no_o_id int, no_d_id smallint, no_w_id smallint
-	protected static class NewOrderState {
+	public static class NewOrderState {
 		public NewOrderState(int _o_id, int _d_id, int _w_id) {
 			this._o_id = _o_id;
 			this._d_id = _d_id;
 			this._w_id = _w_id;
 		}
 
-		int _o_id;
-		int _d_id;
-		int _w_id;
+		public int _o_id;
+		public int _d_id;
+		public int _w_id;
 	}
 
 	// s_i_id int, s_w_id smallint, s_quantity int,
@@ -199,7 +199,7 @@ public class TableState {
 	// s_dist_06 varchar(32), s_dist_07 varchar(32), s_dist_08 varchar(32),
 	// s_dist_09 varchar(32), s_dist_10 varchar(32),
 	// s_ytd int, s_order_cnt int, s_remote_cnt int, s_data varchar(64)
-	protected static class StockState {
+	public static class StockState {
 		public StockState(int _i_id, int _w_id, int _quantity,
 				List<String> _dists, int _ytd, int _order_cnt, int _remote_cnt,
 				String _data) {
@@ -213,20 +213,20 @@ public class TableState {
 			this._data = _data;
 		}
 
-		int _i_id;
-		int _w_id;
-		int _quantity;
-		List<String> _dists;
-		int _ytd;
-		int _order_cnt;
-		int _remote_cnt;
-		String _data;
+		public int _i_id;
+		public int _w_id;
+		public int _quantity;
+		public List<String> _dists;
+		public int _ytd;
+		public int _order_cnt;
+		public int _remote_cnt;
+		public String _data;
 	}
 
 	// ol_o_id int, ol_d_id smallint, ol_w_id smallint,
 	// ol_number int, ol_i_id int, ol_supply_w_id smallint, ol_delivery_d
 	// bigint, ol_quantity int, ol_amount float, ol_dist_info varchar(32)
-	protected static class OrderLineState {
+	public static class OrderLineState {
 		public OrderLineState(int _ol_o_id, int _ol_d_id, int _ol_w_id,
 				int _ol_number, int _ol_i_id, int _ol_supply_w_id,
 				long _ol_delivery_d, int _ol_quantity, double _ol_amount,
@@ -243,21 +243,21 @@ public class TableState {
 			this._ol_dist_info = _ol_dist_info;
 		}
 
-		int _ol_o_id;
-		int _ol_d_id;
-		int _ol_w_id;
-		int _ol_number;
-		int _ol_i_id;
-		int _ol_supply_w_id;
-		long _ol_delivery_d;
-		int _ol_quantity;
-		double _ol_amount;
-		String _ol_dist_info;
+		public int _ol_o_id;
+		public int _ol_d_id;
+		public int _ol_w_id;
+		public int _ol_number;
+		public int _ol_i_id;
+		public int _ol_supply_w_id;
+		public long _ol_delivery_d;
+		public int _ol_quantity;
+		public double _ol_amount;
+		public String _ol_dist_info;
 	}
 
 	// i_id int, i_im_id int, i_name varchar(32), i_price float, i_data
 	// varchar(64)
-	protected static class ItemState {
+	public static class ItemState {
 		public ItemState(int _id, int _im_id, String _name, double _price,
 				String _data) {
 			this._id = _id;
@@ -267,36 +267,36 @@ public class TableState {
 			this._data = _data;
 		}
 
-		int _id;
-		int _im_id;
-		String _name;
-		double _price;
-		String _data;
+		public int _id;
+		public int _im_id;
+		public String _name;
+		public double _price;
+		public String _data;
 	}
 
-	protected static class NationState {
+	public static class NationState {
 		public NationState(int _n_id, String _n_name, int _r_id) {
 			this._n_id = _n_id;
 			this._n_name = _n_name;
 			this._r_id = _r_id;
 		}
 
-		int _n_id;
-		String _n_name;
-		int _r_id;
+		public int _n_id;
+		public String _n_name;
+		public int _r_id;
 	}
 
-	protected static class RegionState {
+	public static class RegionState {
 		public RegionState(int _r_id, String _r_name) {
 			this._r_id = _r_id;
 			this._r_name = _r_name;
 		}
 
-		int _r_id;
-		String _r_name;
+		public int _r_id;
+		public String _r_name;
 	}
 
-	protected static class SupplierState {
+	public static class SupplierState {
 		public SupplierState(int _su_id, String _su_name, String _su_address,
 				int _n_id) {
 			this._su_id = _su_id;
@@ -305,9 +305,9 @@ public class TableState {
 			this._n_id = _n_id;
 		}
 
-		int _su_id;
-		String _su_name;
-		String _su_address;
-		int _n_id;
+		public int _su_id;
+		public String _su_name;
+		public String _su_address;
+		public int _n_id;
 	}
 }

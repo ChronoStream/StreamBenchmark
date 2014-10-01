@@ -312,13 +312,10 @@ public class BenchmarkLoader {
 	}
 
 	static public String generateRegion(int region_id) {
-		String r_name = BenchmarkRandom.getAstring(
-				BenchmarkConstant.MAX_REGION_NAME,
-				BenchmarkConstant.MAX_REGION_NAME);
 		StringBuilder sb = new StringBuilder();
 		sb.append(region_id);
 		sb.append(",");
-		sb.append(r_name);
+		sb.append(BenchmarkConstant.REGIONS[region_id]);
 		return sb.toString();
 	}
 

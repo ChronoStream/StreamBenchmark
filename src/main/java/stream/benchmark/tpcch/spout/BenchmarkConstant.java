@@ -94,7 +94,8 @@ public class BenchmarkConstant {
 	public static final int MAX_NATION_NAME = 20;
 	
 	public static final int NUM_REGION = 5;
-	public static final int MAX_REGION_NAME = 20;
+	public static final int MAX_REGION_NAME = 10;
+	public static final String[] REGIONS = {"ASIA", "EUROPE", "AFRICA", "AMERICA", "AUSTRALIA"};
 	
 	//TPC-C 2.4.3.4 (page 31) says this must be displayed when new order rolls back.
 	public static final String INVALID_ITEM_MESSAGE = "Item number is not valid";

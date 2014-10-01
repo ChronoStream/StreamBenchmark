@@ -23,6 +23,10 @@ public class Q4DriverMain {
 		bolt.globalGrouping("spout", "orderline");
 		bolt.globalGrouping("spout", "history");
 		
+		bolt.globalGrouping("spout", "supplier");
+		bolt.globalGrouping("spout", "region");
+		bolt.globalGrouping("spout", "nation");
+		
 		bolt.globalGrouping("spout", "DELIVERY");
 		bolt.globalGrouping("spout", "NEW_ORDER");
 		bolt.globalGrouping("spout", "ORDER_STATUS");
