@@ -49,6 +49,7 @@ public class Q6HeapBolt extends BaseRichBolt {
 	private Map<Integer, Map<Integer, Map<Integer, OrderState>>> _ordersIndex;
 	private List<NewOrderState> _neworders;
 	private Map<Integer, Map<Integer, List<Integer>>> _newordersIndex;
+	private List<OrderLineState> _orderlines;
 	private Map<Integer, Map<Integer, Map<Integer, List<OrderLineState>>>> _orderlinesIndex;
 	private List<HistoryState> _histories;
 	private Map<Integer, Map<Integer, Map<Integer, List<HistoryState>>>> _historiesIndex;
@@ -208,6 +209,7 @@ public class Q6HeapBolt extends BaseRichBolt {
 					Integer.valueOf(fields[4]), Integer.valueOf(fields[5]),
 					Long.valueOf(fields[6]), Integer.valueOf(fields[7]),
 					Double.valueOf(fields[8]), fields[9]);
+			_orderlines.add(orderline);
 			if (!_orderlinesIndex.containsKey(warehouse_id)) {
 				_orderlinesIndex
 						.put(warehouse_id,
@@ -402,6 +404,7 @@ public class Q6HeapBolt extends BaseRichBolt {
 				OrderLineState olState = new OrderLineState(d_next_o_id, d_id,
 						w_id, ol_number, ol_i_id, ol_supply_w_id, o_entry_d,
 						ol_quantity, ol_amount, s_dist);
+				_orderlines.add(olState);
 				if (!_orderlinesIndex.get(w_id).get(d_id)
 						.containsKey(d_next_o_id)) {
 					_orderlinesIndex.get(w_id).get(d_id)
@@ -503,45 +506,20 @@ public class Q6HeapBolt extends BaseRichBolt {
 				System.out.println("===================================");
 				// /////////////////////////////////////////////////////////////////
 				StringBuilder sb = new StringBuilder();
-
-				for (Integer warehouse : _newordersIndex.keySet()) {
-					for (Integer district : _newordersIndex.get(warehouse)
-							.keySet()) {
-						for (Integer order : _newordersIndex.get(warehouse)
-								.get(district)) {
-							if (_newordersIndex.get(warehouse).get(district)
-									.contains(order)) {
-								if (System.currentTimeMillis()
-										- _ordersIndex.get(warehouse)
-												.get(district).get(order)._entry_d < 1000) {
-									double ol_amount = 0;
-									for (OrderLineState tmpol : _orderlinesIndex
-											.get(warehouse).get(district)
-											.get(order)) {
-										ol_amount += tmpol._ol_amount;
-									}
-									int customer_id = _ordersIndex
-											.get(warehouse).get(district)
-											.get(order)._c_id;
-									String province = _customersIndex
-											.get(warehouse).get(district)
-											.get(customer_id)._state;
-									sb.append(warehouse);
-									sb.append(", ");
-									sb.append(district);
-									sb.append(", ");
-									sb.append(customer_id);
-									sb.append(", ");
-									sb.append(province);
-									sb.append(", ");
-									sb.append(ol_amount);
-									_collector.emit(new Values(sb.toString()));
-									sb.setLength(0);
-								}
-							}
-						}
+				int sum_amount = 0;
+				int count = 0;
+				for (OrderLineState orderline : _orderlines) {
+					if (System.currentTimeMillis() - orderline._ol_delivery_d < 2000) {
+						sum_amount += orderline._ol_amount;
+						count += 1;
 					}
 				}
+				sb.append(sum_amount);
+				sb.append(", ");
+				sb.append(count);
+
+				_collector.emit(new Values(sb.toString()));
+				sb.setLength(0);
 
 				_beginTime = System.currentTimeMillis();
 			}
@@ -565,6 +543,7 @@ public class Q6HeapBolt extends BaseRichBolt {
 		_ordersIndex = new HashMap<Integer, Map<Integer, Map<Integer, OrderState>>>();
 		_neworders = new LinkedList<NewOrderState>();
 		_newordersIndex = new HashMap<Integer, Map<Integer, List<Integer>>>();
+		_orderlines = new LinkedList<OrderLineState>();
 		_orderlinesIndex = new HashMap<Integer, Map<Integer, Map<Integer, List<OrderLineState>>>>();
 		_histories = new LinkedList<HistoryState>();
 		_historiesIndex = new HashMap<Integer, Map<Integer, Map<Integer, List<HistoryState>>>>();

@@ -292,7 +292,7 @@ public class Q3HeapBolt extends BaseRichBolt {
 				// getCId: no_o_id, d_id, w_id
 				int c_id = _ordersIndex.get(w_id).get(d_id).get(no_o_id)._c_id;
 				// sumOLAmount: no_o_id, d_id, w_id
-				int sum = 0;
+				double sum = 0;
 				List<OrderLineState> orderlineList = _orderlinesIndex.get(w_id)
 						.get(d_id).get(no_o_id);
 				for (OrderLineState state : orderlineList) {
@@ -433,6 +433,7 @@ public class Q3HeapBolt extends BaseRichBolt {
 					}
 				}
 				tmpCustomer = customerList.get((customerList.size() - 1) / 2);
+				c_id = tmpCustomer._id;
 			}
 
 			double c_balance = tmpCustomer._balance - h_amount;
@@ -453,10 +454,6 @@ public class Q3HeapBolt extends BaseRichBolt {
 			HistoryState tmpHistory = new HistoryState(tmpCustomer._id, c_d_id,
 					c_w_id, d_id, w_id, h_date, h_amount, h_data);
 			_histories.add(tmpHistory);
-			if (!_historiesIndex.get(c_w_id).get(c_d_id).containsKey(c_id)) {
-				_historiesIndex.get(c_w_id).get(c_d_id)
-						.put(c_id, new LinkedList<HistoryState>());
-			}
 			_historiesIndex.get(c_w_id).get(c_d_id).get(c_id).add(tmpHistory);
 		}
 

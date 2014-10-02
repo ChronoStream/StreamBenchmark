@@ -248,7 +248,7 @@ public class StateMachineHybridBolt extends BaseRichBolt {
 									+ d_id
 									+ " and ol_w_id = " + w_id);
 					olamountResult.next();
-					int sum = olamountResult.getInt(1);
+					double sum = olamountResult.getDouble(1);
 
 					// deleteNewOrder : d_id, w_id, no_o_id
 					++_numNewordersAccess;
@@ -495,6 +495,7 @@ public class StateMachineHybridBolt extends BaseRichBolt {
 					}
 					customerState = customerList
 							.get((customerList.size() - 1) / 2);
+					c_id = customerState.c_id;
 				}
 				// getLastOrder : w_id, d_id, c_id
 				++_numOrdersAccess;

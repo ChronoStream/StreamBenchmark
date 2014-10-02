@@ -1,4 +1,4 @@
-package stream.benchmark.tpcch.query2;
+package stream.benchmark.tpcch.query8;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,9 +30,19 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class Q2HeapBolt extends BaseRichBolt {
+public class Q8HeapBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
+
+	private class ResultState {
+		public ResultState(int _warehouse, double _renvenue) {
+			this._warehouse = _warehouse;
+			this._renvenue = _renvenue;
+		}
+
+		int _warehouse;
+		double _renvenue;
+	}
 
 	private OutputCollector _collector;
 
@@ -422,6 +432,7 @@ public class Q2HeapBolt extends BaseRichBolt {
 			CustomerState tmpCustomer;
 			if (c_id != -1) {
 				tmpCustomer = _customersIndex.get(c_w_id).get(c_d_id).get(c_id);
+				// get C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE
 			} else {
 				// Get the midpoint customer's id
 				List<CustomerState> customerList = new LinkedList<CustomerState>();
@@ -499,47 +510,44 @@ public class Q2HeapBolt extends BaseRichBolt {
 				System.out.println("===================================");
 				// /////////////////////////////////////////////////////////////////
 				StringBuilder sb = new StringBuilder();
-				int max_quantity = -1;
-				int max_item_id = -1;
-				for (int s_i_id : _stocksIndex.keySet()) {
-					int local_quantity = 0;
-					for (int warehouse_id : _stocksIndex.get(s_i_id).keySet()) {
-						int supplier_id = (s_i_id * warehouse_id) % 10000;
-						int nation_id = _suppliersIndex.get(supplier_id)._n_id;
-						String region_name = _regionsIndex.get(_nationsIndex
-								.get(nation_id)._r_id)._r_name;
-						if (region_name.equals("EUROPE")) {
-							local_quantity += _stocksIndex.get(s_i_id).get(
-									warehouse_id)._quantity;
-						}
-					}
-					if (local_quantity > max_quantity) {
-						max_quantity = local_quantity;
-						max_item_id = s_i_id;
-					}
-				}
-				if (max_item_id != -1) {
-					for (int warehouse_id : _stocksIndex.get(max_item_id)
-							.keySet()) {
-						int supplier_id = max_item_id * warehouse_id;
-						int nation_id = _suppliersIndex.get(supplier_id)._n_id;
-						String region_name = _regionsIndex.get(_nationsIndex
-								.get(nation_id)._r_id)._r_name;
-						if (region_name.equals("EUROPE")) {
-							sb.append(max_item_id);
-							sb.append(", ");
-							sb.append(warehouse_id);
-							sb.append(", ");
-							sb.append(_nationsIndex.get(nation_id)._n_name);
-							sb.append(", ");
-							sb.append(region_name);
-							sb.append(", ");
-							sb.append(max_quantity);
-							_collector.emit(new Values(sb.toString()));
-							sb.setLength(0);
+
+				Map<Integer, ResultState> results = new HashMap<Integer, ResultState>();
+				for (OrderState order : _orders) {
+					if (System.currentTimeMillis() - order._entry_d < 10000) {
+						int warehouse = order._w_id;
+						int district = order._d_id;
+						int customer_id = order._c_id;
+						int order_id = order._id;
+						int c_n_id = (_customersIndex.get(warehouse)
+								.get(district).get(customer_id)._state
+								.hashCode() % BenchmarkConstant.NUM_NATION_KEY)
+								+ BenchmarkConstant.INITIAL_NATION_KEY;
+						for (OrderLineState oltmp : _orderlinesIndex
+								.get(warehouse).get(district).get(order_id)) {
+							int item_id = oltmp._ol_i_id;
+							int su_id = (warehouse * item_id) % 10000;
+							SupplierState su = _suppliersIndex.get(su_id);
+							int su_n_id = su._n_id;
+							if (su_n_id == c_n_id
+									&& su_n_id == BenchmarkConstant.INITIAL_NATION_KEY) {
+								if (!results.containsKey(warehouse)) {
+									results.put(warehouse, new ResultState(
+											warehouse, 0));
+								}
+								results.get(warehouse)._renvenue += oltmp._ol_amount;
+							}
 						}
 					}
 				}
+
+				for (ResultState result : results.values()) {
+					sb.append(result._warehouse);
+					sb.append(", ");
+					sb.append(result._renvenue);
+					_collector.emit(new Values(sb.toString()));
+					sb.setLength(0);
+				}
+
 				_beginTime = System.currentTimeMillis();
 			}
 		}

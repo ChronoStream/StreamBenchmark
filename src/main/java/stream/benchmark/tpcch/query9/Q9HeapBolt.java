@@ -1,4 +1,4 @@
-package stream.benchmark.tpcch.query2;
+package stream.benchmark.tpcch.query9;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,9 +30,19 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class Q2HeapBolt extends BaseRichBolt {
+public class Q9HeapBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
+
+	private class ResultState {
+		public ResultState(int _n_id, double _renvenue) {
+			this._n_id = _n_id;
+			this._renvenue = _renvenue;
+		}
+
+		int _n_id;
+		double _renvenue;
+	}
 
 	private OutputCollector _collector;
 
@@ -49,6 +59,7 @@ public class Q2HeapBolt extends BaseRichBolt {
 	private Map<Integer, Map<Integer, Map<Integer, OrderState>>> _ordersIndex;
 	private List<NewOrderState> _neworders;
 	private Map<Integer, Map<Integer, List<Integer>>> _newordersIndex;
+	private List<OrderLineState> _orderlines;
 	private Map<Integer, Map<Integer, Map<Integer, List<OrderLineState>>>> _orderlinesIndex;
 	private List<HistoryState> _histories;
 	private Map<Integer, Map<Integer, Map<Integer, List<HistoryState>>>> _historiesIndex;
@@ -208,6 +219,7 @@ public class Q2HeapBolt extends BaseRichBolt {
 					Integer.valueOf(fields[4]), Integer.valueOf(fields[5]),
 					Long.valueOf(fields[6]), Integer.valueOf(fields[7]),
 					Double.valueOf(fields[8]), fields[9]);
+			_orderlines.add(orderline);
 			if (!_orderlinesIndex.containsKey(warehouse_id)) {
 				_orderlinesIndex
 						.put(warehouse_id,
@@ -422,6 +434,7 @@ public class Q2HeapBolt extends BaseRichBolt {
 			CustomerState tmpCustomer;
 			if (c_id != -1) {
 				tmpCustomer = _customersIndex.get(c_w_id).get(c_d_id).get(c_id);
+				// get C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE
 			} else {
 				// Get the midpoint customer's id
 				List<CustomerState> customerList = new LinkedList<CustomerState>();
@@ -499,47 +512,34 @@ public class Q2HeapBolt extends BaseRichBolt {
 				System.out.println("===================================");
 				// /////////////////////////////////////////////////////////////////
 				StringBuilder sb = new StringBuilder();
-				int max_quantity = -1;
-				int max_item_id = -1;
-				for (int s_i_id : _stocksIndex.keySet()) {
-					int local_quantity = 0;
-					for (int warehouse_id : _stocksIndex.get(s_i_id).keySet()) {
-						int supplier_id = (s_i_id * warehouse_id) % 10000;
-						int nation_id = _suppliersIndex.get(supplier_id)._n_id;
-						String region_name = _regionsIndex.get(_nationsIndex
-								.get(nation_id)._r_id)._r_name;
-						if (region_name.equals("EUROPE")) {
-							local_quantity += _stocksIndex.get(s_i_id).get(
-									warehouse_id)._quantity;
-						}
-					}
-					if (local_quantity > max_quantity) {
-						max_quantity = local_quantity;
-						max_item_id = s_i_id;
-					}
-				}
-				if (max_item_id != -1) {
-					for (int warehouse_id : _stocksIndex.get(max_item_id)
-							.keySet()) {
-						int supplier_id = max_item_id * warehouse_id;
-						int nation_id = _suppliersIndex.get(supplier_id)._n_id;
-						String region_name = _regionsIndex.get(_nationsIndex
-								.get(nation_id)._r_id)._r_name;
-						if (region_name.equals("EUROPE")) {
-							sb.append(max_item_id);
-							sb.append(", ");
-							sb.append(warehouse_id);
-							sb.append(", ");
-							sb.append(_nationsIndex.get(nation_id)._n_name);
-							sb.append(", ");
-							sb.append(region_name);
-							sb.append(", ");
-							sb.append(max_quantity);
-							_collector.emit(new Values(sb.toString()));
-							sb.setLength(0);
+
+				Map<Integer, ResultState> results = new HashMap<Integer, ResultState>();
+				for (OrderLineState orderline : _orderlines) {
+					if (_itemsIndex.get(orderline._ol_i_id)._price > BenchmarkConstant.MIN_PRICE
+							+ (BenchmarkConstant.MAX_PRICE - BenchmarkConstant.MIN_PRICE)
+							/ 2) {
+						if (System.currentTimeMillis()
+								- _ordersIndex.get(orderline._ol_w_id)
+										.get(orderline._ol_d_id)
+										.get(orderline._ol_o_id)._entry_d < 5000) {
+							int su_key = (orderline._ol_i_id * orderline._ol_w_id) % 10000;
+							int su_n_id = _suppliersIndex.get(su_key)._n_id;
+							if (!results.containsKey(su_n_id)) {
+								results.put(su_n_id, new ResultState(su_n_id, 0));
+							}
+							results.get(su_n_id)._renvenue += orderline._ol_amount;
 						}
 					}
 				}
+
+				for (ResultState result : results.values()) {
+					sb.append(result._n_id);
+					sb.append(", ");
+					sb.append(result._renvenue);
+					_collector.emit(new Values(sb.toString()));
+					sb.setLength(0);
+				}
+
 				_beginTime = System.currentTimeMillis();
 			}
 		}
@@ -562,6 +562,7 @@ public class Q2HeapBolt extends BaseRichBolt {
 		_ordersIndex = new HashMap<Integer, Map<Integer, Map<Integer, OrderState>>>();
 		_neworders = new LinkedList<NewOrderState>();
 		_newordersIndex = new HashMap<Integer, Map<Integer, List<Integer>>>();
+		_orderlines = new LinkedList<OrderLineState>();
 		_orderlinesIndex = new HashMap<Integer, Map<Integer, Map<Integer, List<OrderLineState>>>>();
 		_histories = new LinkedList<HistoryState>();
 		_historiesIndex = new HashMap<Integer, Map<Integer, Map<Integer, List<HistoryState>>>>();

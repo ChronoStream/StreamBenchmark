@@ -1,17 +1,17 @@
-package stream.benchmark.tpcc.query;
+package stream.benchmark.tpcch.query9;
 
-import stream.benchmark.tpcc.spout.TpccSpout;
+import stream.benchmark.tpcch.spout.TpcchSpout;
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
 import backtype.storm.topology.BoltDeclarer;
 import backtype.storm.topology.TopologyBuilder;
 
-public class DriverMain {
+public class Q9DriverMain {
 
 	public static void main(String[] args) {
 		TopologyBuilder builder = new TopologyBuilder();
-		builder.setSpout("spout", new TpccSpout(10, 1));
-		BoltDeclarer bolt = builder.setBolt("bolt", new StateMachineBolt());
+		builder.setSpout("spout", new TpcchSpout());
+		BoltDeclarer bolt = builder.setBolt("bolt", new Q9HeapBolt());
 		
 		bolt.globalGrouping("spout", "item");
 		bolt.globalGrouping("spout", "warehouse");
@@ -23,18 +23,22 @@ public class DriverMain {
 		bolt.globalGrouping("spout", "orderline");
 		bolt.globalGrouping("spout", "history");
 		
+		bolt.globalGrouping("spout", "supplier");
+		bolt.globalGrouping("spout", "region");
+		bolt.globalGrouping("spout", "nation");
+		
 		bolt.globalGrouping("spout", "DELIVERY");
 		bolt.globalGrouping("spout", "NEW_ORDER");
 		bolt.globalGrouping("spout", "ORDER_STATUS");
 		bolt.globalGrouping("spout", "PAYMENT");
 		bolt.globalGrouping("spout", "STOCK_LEVEL");
 
-		builder.setBolt("sink", new StateMachineSink()).globalGrouping("bolt");
+		builder.setBolt("sink", new Q9Sink()).globalGrouping("bolt");
 		
 		Config conf=new Config();
 		conf.setDebug(false);
 		LocalCluster cluster = new LocalCluster();
-		cluster.submitTopology("tpcc", conf, builder.createTopology());
+		cluster.submitTopology("tpcch", conf, builder.createTopology());
 	}
 
 }

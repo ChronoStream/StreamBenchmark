@@ -236,7 +236,7 @@ public class StateMachinePreparedDBBolt extends BaseRichBolt {
 					_olAmountSum.setInt(3, w_id);
 					ResultSet olamountResult = _olAmountSum.executeQuery();
 					olamountResult.next();
-					int sum = olamountResult.getInt(1);
+					double sum = olamountResult.getDouble(1);
 
 					// deleteNewOrder : d_id, w_id, no_o_id
 					_newordersDelete.setInt(1, d_id);
@@ -259,7 +259,7 @@ public class StateMachinePreparedDBBolt extends BaseRichBolt {
 					_orderlinesUpdate.executeUpdate();
 
 					// updateCustomer : ol_total, c_id, d_id, w_id
-					_customersUpdate.setInt(1, sum);
+					_customersUpdate.setDouble(1, sum);
 					_customersUpdate.setInt(2, c_id);
 					_customersUpdate.setInt(3, d_id);
 					_customersUpdate.setInt(4, w_id);

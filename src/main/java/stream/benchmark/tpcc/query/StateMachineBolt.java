@@ -240,7 +240,7 @@ public class StateMachineBolt extends BaseRichBolt {
 			_historiesIndex.get(h_c_w_id).get(h_c_d_id).get(h_c_id)
 					.add(history);
 			++_numHistories;
-		} else if (streamname == "DELIVERY") {
+		} else if (streamname.equals("DELIVERY")) {
 			int w_id = Integer.valueOf(fields[0]);
 			int o_carrier_id = Integer.valueOf(fields[1]);
 			long ol_delivery_d = Long.valueOf(fields[2]);
@@ -255,7 +255,7 @@ public class StateMachineBolt extends BaseRichBolt {
 				// getCId: no_o_id, d_id, w_id
 				int c_id = _ordersIndex.get(w_id).get(d_id).get(no_o_id)._c_id;
 				// sumOLAmount: no_o_id, d_id, w_id
-				int sum = 0;
+				double sum = 0;
 				List<OrderLineState> orderlineList = _orderlinesIndex.get(w_id)
 						.get(d_id).get(no_o_id);
 				for (OrderLineState state : orderlineList) {
@@ -268,6 +268,7 @@ public class StateMachineBolt extends BaseRichBolt {
 					NewOrderState tmp = iter.next();
 					if (tmp._o_id == no_o_id) {
 						iter.remove();
+						break;
 					}
 				}
 				// updateOrders : o_carrier_id, no_o_id, d_id, w_id
@@ -282,11 +283,12 @@ public class StateMachineBolt extends BaseRichBolt {
 				// updateCustomer : ol_total, c_id, d_id, w_id
 				_customersIndex.get(w_id).get(d_id).get(c_id)._balance += sum;
 				String result = String.format(
-						"delivery result: district_id=%d, order_id=%d", d_id,
-						no_o_id);
+						"delivery result: district_id=%d, order_id=%d, top_up=%f", d_id,
+						no_o_id, sum);
 				_collector.emit(new Values(result));
 			}
-		} else if (streamname == "NEW_ORDER") {
+		} 
+		else if (streamname.equals("NEW_ORDER")) {
 			int w_id = Integer.valueOf(fields[0]);
 			int d_id = Integer.valueOf(fields[1]);
 			int c_id = Integer.valueOf(fields[2]);
@@ -343,7 +345,7 @@ public class StateMachineBolt extends BaseRichBolt {
 			_neworders.add(neworderState);
 			_newordersIndex.get(w_id).get(d_id).add(d_next_o_id);
 
-			List<NewOrderItemData> item_datas = new LinkedList<NewOrderItemData>();
+			List<NewOrderItemData> item_data = new LinkedList<NewOrderItemData>();
 			double total = 0;
 			for (int i = 0; i < i_ids.size(); ++i) {
 				int ol_number = i + 1;
@@ -399,7 +401,7 @@ public class StateMachineBolt extends BaseRichBolt {
 
 				_orderlinesIndex.get(w_id).get(d_id).get(d_next_o_id)
 						.add(olState);
-				item_datas.add(new NewOrderItemData(tmpItemInfo._i_name,
+				item_data.add(new NewOrderItemData(tmpItemInfo._i_name,
 						s_quantity, brand_generic, tmpItemInfo._i_price,
 						ol_amount));
 			}
@@ -408,124 +410,121 @@ public class StateMachineBolt extends BaseRichBolt {
 					.format("new_order result: customer_id= %d, warehouse_tax=%f, district_tax=%f, order_id=%d, total=%f",
 							c_id, w_tax, d_tax, d_next_o_id, total);
 			_collector.emit(new Values(result));
-		} else if (streamname == "ORDER_STATUS") {
-			int w_id = Integer.valueOf(fields[0]);
-			int d_id = Integer.valueOf(fields[1]);
-			int c_id = Integer.valueOf(fields[2]);
-			CustomerState tmpCustomer;
-			if (c_id != -1) {
-				tmpCustomer = _customersIndex.get(w_id).get(d_id).get(c_id);
-				// get C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE
-			} else {
-				// Get the midpoint customer's id
-				List<CustomerState> customerList = new LinkedList<CustomerState>();
-				for (CustomerState entry : _customersIndex.get(w_id).get(d_id)
-						.values()) {
-					if (entry._last.equals(fields[3])) {
-						customerList.add(entry);
-					}
-				}
-				tmpCustomer = customerList.get((customerList.size() - 1) / 2);
-			}
-			OrderState lastOrder = null;
-			// getLastOrder : w_id, d_id, c_id
-			Map<Integer, OrderState> tmpOrderList = _ordersIndex.get(w_id).get(
-					d_id);
-			for (OrderState tmpOrder : tmpOrderList.values()) {
-				if (tmpOrder._c_id == tmpCustomer._id) {
-					lastOrder = tmpOrder;
-					break;
-				}
-			}
-			if (lastOrder == null) {
-				_collector.emit(new Values("order_status result: null"));
-			} else {
-				// getOrderLines : w_id, d_id, order[0]
-				for (OrderLineState tmpOrderline : _orderlinesIndex.get(w_id)
-						.get(d_id).get(lastOrder._id)) {
-					String result = String
-							.format("order_status result: customer_id=%d, last_order_id=%d, item_id=%d, balance=%f",
-									tmpCustomer._id, lastOrder._id,
-									tmpOrderline._ol_i_id, tmpCustomer._balance);
-					_collector.emit(new Values(result));
-				}
-			}
-
-		} else if (streamname == "PAYMENT") {
-			int w_id = Integer.valueOf(fields[0]);
-			int d_id = Integer.valueOf(fields[1]);
-			double h_amount = Double.valueOf(fields[2]);
-			int c_w_id = Integer.valueOf(fields[3]);
-			int c_d_id = Integer.valueOf(fields[4]);
-			int c_id = Integer.valueOf(fields[5]);
-			String c_last = fields[6];
-			long h_date = Long.valueOf(fields[7]);
-			CustomerState tmpCustomer;
-			if (c_id != -1) {
-				tmpCustomer = _customersIndex.get(c_w_id).get(c_d_id).get(c_id);
-				// get C_ID, C_FIRST, C_MIDDLE, C_LAST, C_BALANCE
-			} else {
-				// Get the midpoint customer's id
-				List<CustomerState> customerList = new LinkedList<CustomerState>();
-				for (CustomerState entry : _customersIndex.get(c_w_id)
-						.get(c_d_id).values()) {
-					if (entry._last.equals(c_last)) {
-						customerList.add(entry);
-					}
-				}
-				tmpCustomer = customerList.get((customerList.size() - 1) / 2);
-			}
-
-			double c_balance = tmpCustomer._balance - h_amount;
-			double c_ytd_payment = tmpCustomer._ytd_payment + h_amount;
-			int c_payment_cnt = tmpCustomer._payment_count + 1;
-			WarehouseState tmpWarehouse = _warehousesIndex.get(w_id);
-			DistrictState tmpDistrict = _districtsIndex.get(w_id).get(d_id);
-			tmpWarehouse._ytd += h_amount;
-			tmpDistrict._ytd += h_amount;
-
-			tmpCustomer._balance = c_balance;
-			tmpCustomer._ytd_payment = c_ytd_payment;
-			tmpCustomer._payment_count = c_payment_cnt;
-
-			String h_data = BenchmarkRandom.getAstring(
-					BenchmarkConstant.MIN_DATA, BenchmarkConstant.MAX_DATA);
-			// InsertHistory
-			HistoryState tmpHistory = new HistoryState(tmpCustomer._id, c_d_id,
-					c_w_id, d_id, w_id, h_date, h_amount, h_data);
-			_histories.add(tmpHistory);
-			if (!_historiesIndex.get(c_w_id).get(c_d_id).containsKey(c_id)) {
-				_historiesIndex.get(c_w_id).get(c_d_id)
-						.put(c_id, new LinkedList<HistoryState>());
-			}
-			_historiesIndex.get(c_w_id).get(c_d_id).get(c_id).add(tmpHistory);
-			String result = String
-					.format("payment result: warehouse_id=%d, district_id=%d, customer_id=%d, balance=%f, ytd_payment=%f",
-							w_id, d_id, tmpCustomer._id, tmpCustomer._balance,
-							tmpCustomer._ytd_payment);
-			_collector.emit(new Values(result));
-		} else if (streamname == "STOCK_LEVEL") {
-			int w_id = Integer.valueOf(fields[0]);
-			int d_id = Integer.valueOf(fields[1]);
-			int threshold = Integer.valueOf(fields[2]);
-			// getOId
-			int next_o_id = _districtsIndex.get(w_id).get(d_id)._next_o_id;
-			// getStockCount : w_id, d_id, o_id, (o_id-20), w_id, threshold
-			for (int o_id = next_o_id - 20; o_id < next_o_id; ++o_id) {
-				for (OrderLineState tmpOrderline : _orderlinesIndex.get(w_id)
-						.get(d_id).get(o_id)) {
-					StockState tmpStock = _stocksIndex.get(
-							tmpOrderline._ol_i_id).get(w_id);
-					if (tmpStock._quantity < threshold) {
-						String result = String
-								.format("stock_level result: item_id=%d, warehouse_id=%d, quantity=%d",
-										tmpStock._i_id, tmpStock._w_id,
-										tmpStock._quantity);
-						_collector.emit(new Values(result));
-					}
-				}
-			}
-		}
+		} 
+//		else if (streamname == "ORDER_STATUS") {
+//			int w_id = Integer.valueOf(fields[0]);
+//			int d_id = Integer.valueOf(fields[1]);
+//			int c_id = Integer.valueOf(fields[2]);
+//			CustomerState tmpCustomer;
+//			if (c_id != -1) {
+//				tmpCustomer = _customersIndex.get(w_id).get(d_id).get(c_id);
+//			} else {
+//				// Get the midpoint customer's id
+//				List<CustomerState> customerList = new LinkedList<CustomerState>();
+//				for (CustomerState entry : _customersIndex.get(w_id).get(d_id)
+//						.values()) {
+//					if (entry._last.equals(fields[3])) {
+//						customerList.add(entry);
+//					}
+//				}
+//				tmpCustomer = customerList.get((customerList.size() - 1) / 2);
+//				c_id = tmpCustomer._id;
+//			}
+//			OrderState lastOrder = null;
+//			// getLastOrder : w_id, d_id, c_id
+//			Map<Integer, OrderState> tmpOrderList = _ordersIndex.get(w_id).get(
+//					d_id);
+//			for (OrderState tmpOrder : tmpOrderList.values()) {
+//				if (tmpOrder._c_id == tmpCustomer._id) {
+//					lastOrder = tmpOrder;
+//					break;
+//				}
+//			}
+//			if (lastOrder == null) {
+//				_collector.emit(new Values("order_status result: null"));
+//			} else {
+//				// getOrderLines : w_id, d_id, order[0]
+//				for (OrderLineState tmpOrderline : _orderlinesIndex.get(w_id)
+//						.get(d_id).get(lastOrder._id)) {
+//					String result = String
+//							.format("order_status result: customer_id=%d, last_order_id=%d, item_id=%d, balance=%f",
+//									tmpCustomer._id, lastOrder._id,
+//									tmpOrderline._ol_i_id, tmpCustomer._balance);
+//					_collector.emit(new Values(result));
+//				}
+//			}
+//
+//		} else if (streamname == "PAYMENT") {
+//			int w_id = Integer.valueOf(fields[0]);
+//			int d_id = Integer.valueOf(fields[1]);
+//			double h_amount = Double.valueOf(fields[2]);
+//			int c_w_id = Integer.valueOf(fields[3]);
+//			int c_d_id = Integer.valueOf(fields[4]);
+//			int c_id = Integer.valueOf(fields[5]);
+//			String c_last = fields[6];
+//			long h_date = Long.valueOf(fields[7]);
+//			CustomerState tmpCustomer;
+//			if (c_id != -1) {
+//				tmpCustomer = _customersIndex.get(c_w_id).get(c_d_id).get(c_id);
+//			} else {
+//				// Get the midpoint customer's id
+//				List<CustomerState> customerList = new LinkedList<CustomerState>();
+//				for (CustomerState entry : _customersIndex.get(c_w_id)
+//						.get(c_d_id).values()) {
+//					if (entry._last.equals(c_last)) {
+//						customerList.add(entry);
+//					}
+//				}
+//				tmpCustomer = customerList.get((customerList.size() - 1) / 2);
+//				c_id = tmpCustomer._id;
+//			}
+//
+//			double c_balance = tmpCustomer._balance - h_amount;
+//			double c_ytd_payment = tmpCustomer._ytd_payment + h_amount;
+//			int c_payment_cnt = tmpCustomer._payment_count + 1;
+//			WarehouseState tmpWarehouse = _warehousesIndex.get(w_id);
+//			DistrictState tmpDistrict = _districtsIndex.get(w_id).get(d_id);
+//			tmpWarehouse._ytd += h_amount;
+//			tmpDistrict._ytd += h_amount;
+//
+//			tmpCustomer._balance = c_balance;
+//			tmpCustomer._ytd_payment = c_ytd_payment;
+//			tmpCustomer._payment_count = c_payment_cnt;
+//
+//			String h_data = BenchmarkRandom.getAstring(
+//					BenchmarkConstant.MIN_DATA, BenchmarkConstant.MAX_DATA);
+//			// InsertHistory
+//			HistoryState tmpHistory = new HistoryState(tmpCustomer._id, c_d_id,
+//					c_w_id, d_id, w_id, h_date, h_amount, h_data);
+//			_histories.add(tmpHistory);
+//			_historiesIndex.get(c_w_id).get(c_d_id).get(c_id).add(tmpHistory);
+//			String result = String
+//					.format("payment result: warehouse_id=%d, district_id=%d, customer_id=%d, balance=%f, ytd_payment=%f",
+//							w_id, d_id, tmpCustomer._id, tmpCustomer._balance,
+//							tmpCustomer._ytd_payment);
+//			_collector.emit(new Values(result));
+//		} else if (streamname == "STOCK_LEVEL") {
+//			int w_id = Integer.valueOf(fields[0]);
+//			int d_id = Integer.valueOf(fields[1]);
+//			int threshold = Integer.valueOf(fields[2]);
+//			// getOId
+//			int next_o_id = _districtsIndex.get(w_id).get(d_id)._next_o_id;
+//			// getStockCount : w_id, d_id, o_id, (o_id-20), w_id, threshold
+//			for (int o_id = next_o_id - 20; o_id < next_o_id; ++o_id) {
+//				for (OrderLineState tmpOrderline : _orderlinesIndex.get(w_id)
+//						.get(d_id).get(o_id)) {
+//					StockState tmpStock = _stocksIndex.get(
+//							tmpOrderline._ol_i_id).get(w_id);
+//					if (tmpStock._quantity < threshold) {
+//						String result = String
+//								.format("stock_level result: item_id=%d, warehouse_id=%d, quantity=%d",
+//										tmpStock._i_id, tmpStock._w_id,
+//										tmpStock._quantity);
+//						_collector.emit(new Values(result));
+//					}
+//				}
+//			}
+//		}
 
 		if (streamname == "DELIVERY" || streamname == "NEW_ORDER"
 				|| streamname == "ORDER_STATUS" || streamname == "PAYMENT"

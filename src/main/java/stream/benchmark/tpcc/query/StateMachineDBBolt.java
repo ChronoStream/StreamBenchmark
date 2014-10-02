@@ -198,13 +198,12 @@ public class StateMachineDBBolt extends BaseRichBolt {
 			}
 
 			// DELIVERY
-			else if (streamname == "DELIVERY") {
+			else if (streamname.equals("DELIVERY")) {
 				int w_id = Integer.valueOf(fields[0]);
 				int o_carrier_id = Integer.valueOf(fields[1]);
 				long ol_delivery_d = Long.valueOf(fields[2]);
 				// for each district, deliver the first new_order
 				for (int d_id = 1; d_id < BenchmarkConstant.DISTRICTS_PER_WAREHOUSE + 1; ++d_id) {
-
 					// getNewOrder: no_d_id, no_w_id
 					ResultSet neworderResult = _statement
 							.executeQuery("select no_o_id from neworders where no_d_id = "
@@ -236,7 +235,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 									+ d_id
 									+ " and ol_w_id = " + w_id);
 					olamountResult.next();
-					int sum = olamountResult.getInt(1);
+					double sum = olamountResult.getDouble(1);
 
 					// deleteNewOrder : d_id, w_id, no_o_id
 					_statement
@@ -274,14 +273,14 @@ public class StateMachineDBBolt extends BaseRichBolt {
 									+ " and c_w_id = " + w_id);
 
 					String result = String.format(
-							"delivery result: district_id=%d, order_id=%d",
-							d_id, no_o_id);
+							"delivery result: district_id=%d, order_id=%d, top_up=%f",
+							d_id, no_o_id, sum);
 					_collector.emit(new Values(result));
 				}
 			}
 
 			// NEW_ORDER
-			else if (streamname == "NEW_ORDER") {
+			else if (streamname.equals("NEW_ORDER")) {
 				int w_id = Integer.valueOf(fields[0]);
 				int d_id = Integer.valueOf(fields[1]);
 				int c_id = Integer.valueOf(fields[2]);
@@ -356,7 +355,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_newordersInsertion.addBatch();
 				_newordersInsertion.executeUpdate();
 
-				List<NewOrderItemData> item_datas = new LinkedList<NewOrderItemData>();
+				List<NewOrderItemData> item_data = new LinkedList<NewOrderItemData>();
 				double total = 0;
 				for (int i = 0; i < i_ids.size(); ++i) {
 					int ol_number = i + 1;
@@ -424,7 +423,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					_orderlinesInsertion.addBatch();
 					_orderlinesInsertion.executeUpdate();
 
-					item_datas.add(new NewOrderItemData(tmpItemInfo._i_name,
+					item_data.add(new NewOrderItemData(tmpItemInfo._i_name,
 							s_quantity, brand_generic, tmpItemInfo._i_price,
 							ol_amount));
 				}
@@ -496,7 +495,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 						_collector.emit(new Values(result));
 					}
 				}
-
 			}
 
 			// PAYMENT
