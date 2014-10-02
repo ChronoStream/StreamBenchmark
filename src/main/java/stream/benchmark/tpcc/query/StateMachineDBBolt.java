@@ -215,6 +215,14 @@ public class StateMachineDBBolt extends BaseRichBolt {
 						continue;
 					}
 					int no_o_id = neworderResult.getInt(1);
+					// deleteNewOrder : d_id, w_id, no_o_id
+					_statement
+							.executeUpdate("delete from neworders where no_d_id = "
+									+ d_id
+									+ " and no_w_id = "
+									+ w_id
+									+ " and no_o_id = " + no_o_id);
+					
 					// getCId: no_o_id, d_id, w_id
 					ResultSet orderResult = _statement
 							.executeQuery("select o_c_id from orders where o_id = "
@@ -237,13 +245,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					olamountResult.next();
 					double sum = olamountResult.getDouble(1);
 
-					// deleteNewOrder : d_id, w_id, no_o_id
-					_statement
-							.executeUpdate("delete from neworders where no_d_id = "
-									+ d_id
-									+ " and no_w_id = "
-									+ w_id
-									+ " and no_o_id = " + no_o_id);
 
 					// updateOrders : o_carrier_id, no_o_id, d_id, w_id
 					_statement

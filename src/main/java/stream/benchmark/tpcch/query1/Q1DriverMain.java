@@ -11,7 +11,7 @@ public class Q1DriverMain {
 	public static void main(String[] args) {
 		TopologyBuilder builder = new TopologyBuilder();
 		builder.setSpout("spout", new TpcchSpout());
-		BoltDeclarer bolt = builder.setBolt("bolt", new Q1HeapBolt());
+		BoltDeclarer bolt = builder.setBolt("bolt", new Q1BoltOpt1());
 		
 		bolt.globalGrouping("spout", "item");
 		bolt.globalGrouping("spout", "warehouse");

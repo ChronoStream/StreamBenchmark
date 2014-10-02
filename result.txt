@@ -1,0 +1,12 @@
+5143 [Thread-8-bolt] INFO  backtype.storm.daemon.executor - Prepared bolt bolt:(2)
+load database elapsed time = 2613ms
+******memory status******
+used memory=173MB
+Max memory=1811MB
+*************************
+=============ORIGIN===============
+item num=1000
+district num=40
+neworder num=361
+orderline num=11910
+==================================

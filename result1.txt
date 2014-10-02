@@ -1,0 +1,301 @@
+5965 [Thread-8-bolt] INFO  backtype.storm.daemon.executor - Prepared bolt bolt:(2)
+load database elapsed time = 2799ms
+******memory status******
+used memory=89MB
+Max memory=1811MB
+*************************
+=============ORIGIN===============
+item num=1000
+district num=40
+neworder num=361
+orderline num=12107
+==================================
+################################################
+elapsed query time = 48ms
+******memory status******
+used memory=226MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=22755
+orderline size=239038
+===================================
+*************READ**************
+read item size=226931
+read district size=22755
+read neworder size=0
+read orderline size=234790
+===================================
+*************WRITE**************
+write item size=0
+write district size=22755
+write neworder size=26366
+write orderline size=226931
+===================================
+################################################
+elapsed query time = 24ms
+******memory status******
+used memory=421MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=49836
+orderline size=509747
+===================================
+*************READ**************
+read item size=270709
+read district size=27081
+read neworder size=0
+read orderline size=386657
+===================================
+*************WRITE**************
+write item size=0
+write district size=27081
+write neworder size=27081
+write orderline size=270709
+===================================
+13862 [timer] INFO  backtype.storm.daemon.nimbus - Setting new assignment for topology id tpcch-1-1412240000: #backtype.storm.daemon.common.Assignment{:master-code-dir "C:\\Users\\workshop\\AppData\\Local\\Temp\\096d0243-e1a7-4e59-9343-a92ba4ce3ca7\\nimbus\\stormdist\\tpcch-1-1412240000", :node->host {"00c5968a-35d0-4161-bb16-86d3983a8d8e" "soccf-dbr3-001.comp.nus.edu.sg"}, :executor->node+port {[3 3] ["00c5968a-35d0-4161-bb16-86d3983a8d8e" 1024], [4 4] ["00c5968a-35d0-4161-bb16-86d3983a8d8e" 1024], [2 2] ["00c5968a-35d0-4161-bb16-86d3983a8d8e" 1024], [1 1] ["00c5968a-35d0-4161-bb16-86d3983a8d8e" 1024]}, :executor->start-time-secs {[4 4] 1412240010, [1 1] 1412240010, [2 2] 1412240010, [3 3] 1412240010}}
+################################################
+elapsed query time = 30ms
+******memory status******
+used memory=391MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=71093
+orderline size=721524
+===================================
+*************READ**************
+read item size=211777
+read district size=21257
+read neworder size=0
+read orderline size=337499
+===================================
+*************WRITE**************
+write item size=0
+write district size=21257
+write neworder size=21257
+write orderline size=211777
+===================================
+################################################
+elapsed query time = 40ms
+******memory status******
+used memory=479MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=100298
+orderline size=1013378
+===================================
+*************READ**************
+read item size=291854
+read district size=29205
+read neworder size=0
+read orderline size=419193
+===================================
+*************WRITE**************
+write item size=0
+write district size=29205
+write neworder size=29205
+write orderline size=291854
+===================================
+################################################
+elapsed query time = 51ms
+******memory status******
+used memory=509MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=130940
+orderline size=1319443
+===================================
+*************READ**************
+read item size=306065
+read district size=30642
+read neworder size=0
+read orderline size=441171
+===================================
+*************WRITE**************
+write item size=0
+write district size=30642
+write neworder size=30642
+write orderline size=306065
+===================================
+################################################
+elapsed query time = 56ms
+******memory status******
+used memory=280MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=150528
+orderline size=1514795
+===================================
+*************READ**************
+read item size=195352
+read district size=19588
+read neworder size=0
+read orderline size=328788
+===================================
+*************WRITE**************
+write item size=0
+write district size=19588
+write neworder size=19588
+write orderline size=195352
+===================================
+################################################
+elapsed query time = 65ms
+******memory status******
+used memory=263MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=180732
+orderline size=1817117
+===================================
+*************READ**************
+read item size=302322
+read district size=30204
+read neworder size=0
+read orderline size=324330
+===================================
+*************WRITE**************
+write item size=0
+write district size=30204
+write neworder size=30204
+write orderline size=302322
+===================================
+################################################
+elapsed query time = 82ms
+******memory status******
+used memory=767MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=212077
+orderline size=2129664
+===================================
+*************READ**************
+read item size=312547
+read district size=31345
+read neworder size=0
+read orderline size=422237
+===================================
+*************WRITE**************
+write item size=0
+write district size=31345
+write neworder size=31345
+write orderline size=312547
+===================================
+################################################
+elapsed query time = 94ms
+******memory status******
+used memory=426MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=221748
+orderline size=2225982
+===================================
+*************READ**************
+read item size=96318
+read district size=9671
+read neworder size=0
+read orderline size=214730
+===================================
+*************WRITE**************
+write item size=0
+write district size=9671
+write neworder size=9671
+write orderline size=96318
+===================================
+################################################
+elapsed query time = 98ms
+******memory status******
+used memory=368MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=247791
+orderline size=2486461
+===================================
+*************READ**************
+read item size=260479
+read district size=26043
+read neworder size=0
+read orderline size=324183
+===================================
+*************WRITE**************
+write item size=0
+write district size=26043
+write neworder size=26043
+write orderline size=260479
+===================================
+################################################
+elapsed query time = 192ms
+******memory status******
+used memory=381MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=278082
+orderline size=2790126
+===================================
+*************READ**************
+read item size=303665
+read district size=30291
+read neworder size=0
+read orderline size=387774
+===================================
+*************WRITE**************
+write item size=0
+write district size=30291
+write neworder size=30291
+write orderline size=303665
+===================================
+################################################
+elapsed query time = 224ms
+******memory status******
+used memory=412MB
+Max memory=1811MB
+*************************
+*************CURRENT**************
+item size=1000
+district size=40
+neworder size=308468
+orderline size=3094073
+===================================
+*************READ**************
+read item size=303947
+read district size=30386
+read neworder size=0
+read orderline size=401530
+===================================
+*************WRITE**************
+write item size=0
+write district size=30386
+write neworder size=30386
+write orderline size=303947
+===================================
