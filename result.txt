@@ -1,0 +1,38 @@
+5898 [Thread-8-bolt] INFO  backtype.storm.daemon.executor - Prepared bolt bolt:(2)
+load database elapsed time = 778ms
+################################################
+elapsed consume time = 3040ms
+elapsed query time = 165ms
+******memory status******
+used memory=503MB
+Max memory=1811MB
+*************************
+################################################
+elapsed consume time = 3486ms
+elapsed query time = 109ms
+******memory status******
+used memory=759MB
+Max memory=1811MB
+*************************
+13863 [timer] INFO  backtype.storm.daemon.nimbus - Setting new assignment for topology id tpcch-1-1412320590: #backtype.storm.daemon.common.Assignment{:master-code-dir "C:\\Users\\workshop\\AppData\\Local\\Temp\\a4f11e4b-4c48-41a2-9e08-0bd19aa01ae3\\nimbus\\stormdist\\tpcch-1-1412320590", :node->host {"54fd412a-f963-4d14-88f2-67fd5c5d1cf7" "soccf-dbr3-001.comp.nus.edu.sg"}, :executor->node+port {[3 3] ["54fd412a-f963-4d14-88f2-67fd5c5d1cf7" 1024], [4 4] ["54fd412a-f963-4d14-88f2-67fd5c5d1cf7" 1024], [2 2] ["54fd412a-f963-4d14-88f2-67fd5c5d1cf7" 1024], [1 1] ["54fd412a-f963-4d14-88f2-67fd5c5d1cf7" 1024]}, :executor->start-time-secs {[4 4] 1412320599, [1 1] 1412320599, [2 2] 1412320599, [3 3] 1412320599}}
+################################################
+elapsed consume time = 1573ms
+elapsed query time = 2125ms
+******memory status******
+used memory=547MB
+Max memory=1811MB
+*************************
+################################################
+elapsed consume time = 1835ms
+elapsed query time = 203ms
+******memory status******
+used memory=807MB
+Max memory=1811MB
+*************************
+################################################
+elapsed consume time = 2888ms
+elapsed query time = 252ms
+******memory status******
+used memory=937MB
+Max memory=1811MB
+*************************

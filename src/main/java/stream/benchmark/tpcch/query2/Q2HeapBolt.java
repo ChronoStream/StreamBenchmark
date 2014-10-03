@@ -36,13 +36,18 @@ public class Q2HeapBolt extends BaseRichBolt {
 	private long _beginTime;
 
 	private int _numReadItems = 0;
-	private int _numReadDistricts = 0;
-	private int _numReadNeworders = 0;
-	private int _numReadOrderlines = 0;
+	private int _numReadStocks = 0;
+	private int _numReadNations = 0;
+	private int _numReadRegions = 0;
+	private int _numReadSuppliers = 0;
+
 	private int _numWriteItems = 0;
-	private int _numWriteDistricts = 0;
-	private int _numWriteNeworders = 0;
-	private int _numWriteOrderlines = 0;
+	private int _numWriteStocks = 0;
+	private int _numWriteNations = 0;
+	private int _numWriteRegions = 0;
+	private int _numWriteSuppliers = 0;
+
+	private int _numEventCount = 0;
 
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);
@@ -54,7 +59,7 @@ public class Q2HeapBolt extends BaseRichBolt {
 			ItemState item = new ItemState(item_id, Integer.valueOf(fields[1]),
 					fields[2], Double.valueOf(fields[3]), fields[4]);
 			_itemsIndex.put(item_id, item);
-		} 
+		}
 		// stock
 		else if (streamname == "stock") {
 			int item_id = Integer.valueOf(fields[0]);
@@ -77,7 +82,7 @@ public class Q2HeapBolt extends BaseRichBolt {
 			if (!_stocksIndex.get(item_id).containsKey(warehouse_id)) {
 				_stocksIndex.get(item_id).put(warehouse_id, stock);
 			}
-		} 
+		}
 		// nation
 		else if (streamname == "nation") {
 			int n_id = Integer.valueOf(fields[0]);
@@ -85,14 +90,14 @@ public class Q2HeapBolt extends BaseRichBolt {
 			int r_id = Integer.valueOf(fields[2]);
 			NationState nation = new NationState(n_id, n_name, r_id);
 			_nationsIndex.put(n_id, nation);
-		} 
+		}
 		// region
 		else if (streamname == "region") {
 			int r_id = Integer.valueOf(fields[0]);
 			String r_name = fields[1];
 			RegionState region = new RegionState(r_id, r_name);
 			_regionsIndex.put(r_id, region);
-		} 
+		}
 		// supplier
 		else if (streamname == "supplier") {
 			int su_id = Integer.valueOf(fields[0]);
@@ -102,7 +107,8 @@ public class Q2HeapBolt extends BaseRichBolt {
 			SupplierState supplier = new SupplierState(su_id, su_name,
 					su_address, n_id);
 			_suppliersIndex.put(su_id, supplier);
-		} 
+		}
+		// NEW_ORDER
 		else if (streamname == "NEW_ORDER") {
 			int w_id = Integer.valueOf(fields[0]);
 			List<Integer> i_ids = new LinkedList<Integer>();
@@ -144,12 +150,14 @@ public class Q2HeapBolt extends BaseRichBolt {
 				stockInfo._ytd = s_ytd;
 				stockInfo._order_cnt = s_order_cnt;
 				stockInfo._remote_cnt = s_remote_cnt;
+				++_numReadStocks;
+				++_numWriteStocks;
 			}
+			// event count
+			++_numEventCount;
 		}
 
-		if (streamname == "DELIVERY" || streamname == "NEW_ORDER"
-				|| streamname == "ORDER_STATUS" || streamname == "PAYMENT"
-				|| streamname == "STOCK_LEVEL") {
+		if (streamname == "NEW_ORDER") {
 			if (_isFirstQuery) {
 				long elapsedTime = System.currentTimeMillis() - _beginTime;
 				System.out.println("load database elapsed time = "
@@ -157,13 +165,18 @@ public class Q2HeapBolt extends BaseRichBolt {
 				_isFirstQuery = false;
 				_beginTime = System.currentTimeMillis();
 
-			} else if (System.currentTimeMillis() - _beginTime >= 2000) {
-
+			} else if (_numEventCount % 200000 == 0) {
+				_numEventCount = 0;
+				System.out
+						.println("################################################");
+				System.out.println("elapsed consume time = "
+						+ (System.currentTimeMillis() - _beginTime) + "ms");
 				// /////////////////////////////////////////////////////////////////
 				long startQueryTime = System.currentTimeMillis();
 				StringBuilder sb = new StringBuilder();
 				int max_quantity = -1;
 				int max_item_id = -1;
+				// find the item with maximum stock quantity
 				for (int s_i_id : _stocksIndex.keySet()) {
 					int local_quantity = 0;
 					for (int warehouse_id : _stocksIndex.get(s_i_id).keySet()) {
@@ -184,53 +197,65 @@ public class Q2HeapBolt extends BaseRichBolt {
 				if (max_item_id != -1) {
 					for (int warehouse_id : _stocksIndex.get(max_item_id)
 							.keySet()) {
-						int supplier_id = max_item_id * warehouse_id;
+						int supplier_id = (max_item_id * warehouse_id) % 10000;
 						int nation_id = _suppliersIndex.get(supplier_id)._n_id;
 						String region_name = _regionsIndex.get(_nationsIndex
 								.get(nation_id)._r_id)._r_name;
-						if (region_name.equals("EUROPE")) {
-							sb.append(max_item_id);
-							sb.append(", ");
-							sb.append(warehouse_id);
-							sb.append(", ");
-							sb.append(_nationsIndex.get(nation_id)._n_name);
-							sb.append(", ");
-							sb.append(region_name);
-							sb.append(", ");
-							sb.append(max_quantity);
-							_collector.emit(new Values(sb.toString()));
-							sb.setLength(0);
-						}
+						String item_name = _itemsIndex.get(max_item_id)._name;
+						
+						++_numReadItems;
+						
+						sb.append(max_item_id);
+						sb.append(", ");
+						sb.append(warehouse_id);
+						sb.append(", ");
+						sb.append(_nationsIndex.get(nation_id)._n_name);
+						sb.append(", ");
+						sb.append(region_name);
+						sb.append(", ");
+						sb.append(max_quantity);
+						sb.append(", ");
+						sb.append(item_name);
+						_collector.emit(new Values(sb.toString()));
+						sb.setLength(0);
 					}
 				}
-				System.out
-						.println("################################################");
 				System.out.println("elapsed query time = "
 						+ (System.currentTimeMillis() - startQueryTime) + "ms");
 
 				MemoryReport.reportStatus();
 				System.out.println("*************READ**************");
 				System.out.println("read item size=" + _numReadItems);
-				System.out.println("read district size=" + _numReadDistricts);
-				System.out.println("read neworder size=" + _numReadNeworders);
-				System.out.println("read orderline size=" + _numReadOrderlines);
+				System.out.println("read stock size=" + _numReadStocks);
+				System.out.println("read nation size=" + _numReadNations);
+				System.out.println("read region size=" + _numReadRegions);
+				System.out.println("read supplier size=" + _numReadSuppliers);
 				System.out.println("===================================");
 
 				System.out.println("*************WRITE**************");
 				System.out.println("write item size=" + _numWriteItems);
-				System.out.println("write district size=" + _numWriteDistricts);
-				System.out.println("write neworder size=" + _numWriteNeworders);
-				System.out.println("write orderline size="
-						+ _numWriteOrderlines);
+				System.out.println("write stock size=" + _numWriteStocks);
+				System.out.println("write nation size=" + _numWriteNations);
+				System.out.println("write region size=" + _numWriteRegions);
+				System.out.println("write supplier size=" + _numWriteSuppliers);
 				System.out.println("===================================");
 				_numReadItems = 0;
-				_numReadDistricts = 0;
-				_numReadNeworders = 0;
-				_numReadOrderlines = 0;
+				_numReadStocks = 0;
+				_numReadNations = 0;
+				_numReadRegions = 0;
+				_numReadSuppliers = 0;
+
 				_numWriteItems = 0;
-				_numWriteDistricts = 0;
-				_numWriteNeworders = 0;
-				_numWriteOrderlines = 0;
+				_numWriteStocks = 0;
+				_numWriteNations = 0;
+				_numWriteRegions = 0;
+				_numWriteSuppliers = 0;
+				
+				int count = 0;
+				for (Map<Integer, StockState> stockmap : _stocksIndex.values()){
+					count += stockmap.size();
+				}
+				System.out.println("stocks size=" + count);
 
 				_beginTime = System.currentTimeMillis();
 			}

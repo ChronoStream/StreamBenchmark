@@ -20,7 +20,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class Q3HeapBolt extends BaseRichBolt {
+public class Q3OptTemplateBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
 

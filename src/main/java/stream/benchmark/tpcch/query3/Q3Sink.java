@@ -17,7 +17,7 @@ public class Q3Sink extends BaseRichBolt {
 	}
 
 	public void execute(Tuple input) {
-		System.out.println(input.getString(0));
+//		System.out.println(input.getString(0));
 	}
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
