@@ -77,19 +77,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 	private boolean _isFirstQuery = true;
 	private long _beginTime;
 
-	private int _numItems = 0;
-	private int _numWarehouses = 0;
-	private int _numDistricts = 0;
-	private int _numCustomers = 0;
-	private int _numStocks = 0;
-	private int _numOrders = 0;
-	private int _numNeworders = 0;
-	private int _numOrderlines = 0;
-	private int _numHistories = 0;
-	private int _numNations = 0;
-	private int _numRegions = 0;
-	private int _numSuppliers = 0;
-
 	public void execute(Tuple input) {
 		String tuple = input.getString(0);
 		String[] fields = tuple.split(",");
@@ -100,7 +87,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 					fields[2], Double.valueOf(fields[3]), fields[4]);
 			_items.add(item);
 			_itemsIndex.put(item_id, item);
-			++_numItems;
 		} else if (streamname == "warehouse") {
 			int warehouse_id = Integer.valueOf(fields[0]);
 			WarehouseState warehouse = new WarehouseState(warehouse_id,
@@ -109,7 +95,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 					Double.valueOf(fields[8]));
 			_warehouses.add(warehouse);
 			_warehousesIndex.put(Integer.valueOf(fields[0]), warehouse);
-			++_numWarehouses;
 		} else if (streamname == "district") {
 			int district_id = Integer.valueOf(fields[0]);
 			int warehouse_id = Integer.valueOf(fields[1]);
@@ -123,7 +108,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 						new HashMap<Integer, DistrictState>());
 			}
 			_districtsIndex.get(warehouse_id).put(district_id, district);
-			++_numDistricts;
 		} else if (streamname == "customer") {
 			int customer_id = Integer.valueOf(fields[0]);
 			int district_id = Integer.valueOf(fields[1]);
@@ -147,7 +131,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 			}
 			_customersIndex.get(warehouse_id).get(district_id)
 					.put(customer_id, customer);
-			++_numCustomers;
 		} else if (streamname == "stock") {
 			int item_id = Integer.valueOf(fields[0]);
 			int warehouse_id = Integer.valueOf(fields[1]);
@@ -170,7 +153,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 			if (!_stocksIndex.get(item_id).containsKey(warehouse_id)) {
 				_stocksIndex.get(item_id).put(warehouse_id, stock);
 			}
-			++_numStocks;
 		} else if (streamname == "order") {
 			int order_id = Integer.valueOf(fields[0]);
 			int customer_id = Integer.valueOf(fields[1]);
@@ -191,7 +173,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 			}
 			_ordersIndex.get(warehouse_id).get(district_id)
 					.put(order_id, order);
-			++_numOrders;
 		} else if (streamname == "neworder") {
 			int order_id = Integer.valueOf(fields[0]);
 			int district_id = Integer.valueOf(fields[1]);
@@ -208,7 +189,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 						new LinkedList<Integer>());
 			}
 			_newordersIndex.get(warehouse_id).get(district_id).add(order_id);
-			++_numNeworders;
 		} else if (streamname == "orderline") {
 			int order_id = Integer.valueOf(fields[0]);
 			int district_id = Integer.valueOf(fields[1]);
@@ -234,7 +214,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 			}
 			_orderlinesIndex.get(warehouse_id).get(district_id).get(order_id)
 					.add(orderline);
-			++_numOrderlines;
 		} else if (streamname == "history") {
 			int h_c_id = Integer.valueOf(fields[0]);
 			int h_c_d_id = Integer.valueOf(fields[1]);
@@ -261,7 +240,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 
 			_historiesIndex.get(h_c_w_id).get(h_c_d_id).get(h_c_id)
 					.add(history);
-			++_numHistories;
 		} else if (streamname == "nation") {
 			int n_id = Integer.valueOf(fields[0]);
 			String n_name = fields[1];
@@ -269,14 +247,12 @@ public class Q4HeapBolt extends BaseRichBolt {
 			NationState nation = new NationState(n_id, n_name, r_id);
 			_nations.add(nation);
 			_nationsIndex.put(n_id, nation);
-			++_numNations;
 		} else if (streamname == "region") {
 			int r_id = Integer.valueOf(fields[0]);
 			String r_name = fields[1];
 			RegionState region = new RegionState(r_id, r_name);
 			_regions.add(region);
 			_regionsIndex.put(r_id, region);
-			++_numRegions;
 		} else if (streamname == "supplier") {
 			int su_id = Integer.valueOf(fields[0]);
 			String su_name = fields[1];
@@ -286,10 +262,10 @@ public class Q4HeapBolt extends BaseRichBolt {
 					su_address, n_id);
 			_suppliers.add(supplier);
 			_suppliersIndex.put(su_id, supplier);
-			++_numSuppliers;
-		} else if (streamname == "DELIVERY") {
+		} 
+		// DELIVERY
+		else if (streamname == "DELIVERY") {
 			int w_id = Integer.valueOf(fields[0]);
-			int o_carrier_id = Integer.valueOf(fields[1]);
 			long ol_delivery_d = Long.valueOf(fields[2]);
 			// for each district, deliver the first new_order
 			for (int d_id = 1; d_id < BenchmarkConstant.DISTRICTS_PER_WAREHOUSE + 1; ++d_id) {
@@ -317,19 +293,16 @@ public class Q4HeapBolt extends BaseRichBolt {
 						iter.remove();
 					}
 				}
-				// updateOrders : o_carrier_id, no_o_id, d_id, w_id
-				_ordersIndex.get(w_id).get(d_id).get(no_o_id)._carrier_id = o_carrier_id;
-
 				// updateOrderLine : ol_delivery_d, no_o_id, d_id, w_id
 				List<OrderLineState> tmpList = _orderlinesIndex.get(w_id)
 						.get(d_id).get(no_o_id);
 				for (OrderLineState tmp : tmpList) {
 					tmp._ol_delivery_d = ol_delivery_d;
 				}
-				// updateCustomer : ol_total, c_id, d_id, w_id
-				_customersIndex.get(w_id).get(d_id).get(c_id)._balance += sum;
 			}
-		} else if (streamname == "NEW_ORDER") {
+		} 
+		// NEW_ORDER
+		else if (streamname == "NEW_ORDER") {
 			int w_id = Integer.valueOf(fields[0]);
 			int d_id = Integer.valueOf(fields[1]);
 			int c_id = Integer.valueOf(fields[2]);
@@ -420,7 +393,9 @@ public class Q4HeapBolt extends BaseRichBolt {
 				_orderlinesIndex.get(w_id).get(d_id).get(d_next_o_id)
 						.add(olState);
 			}
-		} else if (streamname == "PAYMENT") {
+		} 
+		// PAYMENT
+		else if (streamname == "PAYMENT") {
 			int w_id = Integer.valueOf(fields[0]);
 			int d_id = Integer.valueOf(fields[1]);
 			double h_amount = Double.valueOf(fields[2]);
@@ -467,8 +442,7 @@ public class Q4HeapBolt extends BaseRichBolt {
 		}
 
 		if (streamname == "DELIVERY" || streamname == "NEW_ORDER"
-				|| streamname == "ORDER_STATUS" || streamname == "PAYMENT"
-				|| streamname == "STOCK_LEVEL") {
+				|| streamname == "PAYMENT") {
 			if (_isFirstQuery) {
 				long elapsedTime = System.currentTimeMillis() - _beginTime;
 				System.out.println("load database elapsed time = "
@@ -479,35 +453,6 @@ public class Q4HeapBolt extends BaseRichBolt {
 			} else if (System.currentTimeMillis() - _beginTime >= 2000) {
 				MemoryReport.reportStatus();
 
-				System.out.println("===================================");
-				System.out.println("item num=" + _numItems);
-				System.out.println("warehouse num=" + _numWarehouses);
-				System.out.println("district num=" + _numDistricts);
-				System.out.println("customer num=" + _numCustomers);
-				System.out.println("order num=" + _numOrders);
-				System.out.println("neworder num=" + _numNeworders);
-				System.out.println("orderline num=" + _numOrderlines);
-				System.out.println("history num=" + _numHistories);
-				System.out.println("stock num=" + _numStocks);
-				System.out.println("region num=" + _numRegions);
-				System.out.println("nation num=" + _numNations);
-				System.out.println("supplier num=" + _numSuppliers);
-
-				System.out.println("***********************************");
-
-				System.out.println("item size=" + _items.size());
-				System.out.println("warehouse size=" + _warehouses.size());
-				System.out.println("district size=" + _districts.size());
-				System.out.println("customer size=" + _customers.size());
-				System.out.println("order size=" + _orders.size());
-				System.out.println("neworder size=" + _neworders.size());
-				System.out.println("history size=" + _histories.size());
-				System.out.println("stock size=" + _stocks.size());
-				System.out.println("region num=" + _regions.size());
-				System.out.println("nation num=" + _nations.size());
-				System.out.println("supplier num=" + _suppliers.size());
-				System.out.println("===================================");
-				// /////////////////////////////////////////////////////////////////
 				StringBuilder sb = new StringBuilder();
 
 				Map<Integer, ResultState> results = new HashMap<Integer, ResultState>();

@@ -14,14 +14,11 @@ public class Q5DriverMain {
 		BoltDeclarer bolt = builder.setBolt("bolt", new Q5HeapBolt());
 		
 		bolt.globalGrouping("spout", "item");
-		bolt.globalGrouping("spout", "warehouse");
 		bolt.globalGrouping("spout", "district");
 		bolt.globalGrouping("spout", "customer");
-		bolt.globalGrouping("spout", "stock");
 		bolt.globalGrouping("spout", "order");
 		bolt.globalGrouping("spout", "neworder");
 		bolt.globalGrouping("spout", "orderline");
-		bolt.globalGrouping("spout", "history");
 		
 		bolt.globalGrouping("spout", "supplier");
 		bolt.globalGrouping("spout", "region");
@@ -29,9 +26,6 @@ public class Q5DriverMain {
 		
 		bolt.globalGrouping("spout", "DELIVERY");
 		bolt.globalGrouping("spout", "NEW_ORDER");
-		bolt.globalGrouping("spout", "ORDER_STATUS");
-		bolt.globalGrouping("spout", "PAYMENT");
-		bolt.globalGrouping("spout", "STOCK_LEVEL");
 
 		builder.setBolt("sink", new Q5Sink()).globalGrouping("bolt");
 		

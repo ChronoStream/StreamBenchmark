@@ -197,7 +197,6 @@ public class Q3HeapBolt extends BaseRichBolt {
 			for (String tmp : fields[6].split(";")) {
 				i_qtys.add(Integer.valueOf(tmp));
 			}
-
 			// getDistrict : d_id, w_id
 			int d_next_o_id = _districtsIndex.get(w_id).get(d_id)._next_o_id;
 			_districtsIndex.get(w_id).get(d_id)._next_o_id = d_next_o_id + 1;
