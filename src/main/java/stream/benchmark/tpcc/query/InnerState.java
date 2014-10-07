@@ -20,7 +20,24 @@ public class InnerState {
 		public double c_ytd_payment;
 		public int c_payment_cnt;
 	}
-	
+
+	protected static class InnerStockState {
+		public InnerStockState(int s_quantity, int s_ytd, int s_order_cnt,
+				int s_remote_cnt, String s_dist) {
+			this.s_quantity = s_quantity;
+			this.s_ytd = s_ytd;
+			this.s_order_cnt = s_order_cnt;
+			this.s_remote_cnt = s_remote_cnt;
+			this.s_dist = s_dist;
+		}
+
+		public int s_quantity;
+		public int s_ytd;
+		public int s_order_cnt;
+		public int s_remote_cnt;
+		public String s_dist;
+	}
+
 	protected static class NewOrderItemInfo {
 		public NewOrderItemInfo(double i_price, String i_name, String i_data) {
 			this._i_price = i_price;

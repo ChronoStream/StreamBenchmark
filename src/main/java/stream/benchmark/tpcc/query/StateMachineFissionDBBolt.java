@@ -5,14 +5,14 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import stream.benchmark.toolkits.MemoryReport;
-import stream.benchmark.tpcc.query.InnerState.NewOrderItemInfo;
-import stream.benchmark.tpcc.query.InnerState.NewOrderItemData;
 import stream.benchmark.tpcc.query.InnerState.InnerCustomerState;
+import stream.benchmark.tpcc.query.InnerState.InnerStockState;
 import stream.benchmark.tpcc.spout.BenchmarkConstant;
 import stream.benchmark.tpcc.spout.BenchmarkRandom;
 import backtype.storm.task.OutputCollector;
@@ -23,7 +23,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class StateMachineDBBolt extends BaseRichBolt {
+public class StateMachineFissionDBBolt extends BaseRichBolt {
 
 	private static final long serialVersionUID = 1L;
 
@@ -194,79 +194,93 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				int w_id = Integer.valueOf(fields[0]);
 				int o_carrier_id = Integer.valueOf(fields[1]);
 				long ol_delivery_d = Long.valueOf(fields[2]);
-				// for each district, deliver the first new_order
-				for (int d_id = 1; d_id < BenchmarkConstant.DISTRICTS_PER_WAREHOUSE + 1; ++d_id) {
-					// getNewOrder: no_d_id, no_w_id
-					ResultSet neworderResult = _statement
-							.executeQuery("select no_o_id from neworders where no_d_id = "
-									+ d_id
-									+ " and no_w_id = "
-									+ w_id
-									+ " limit 1");
-					if (!neworderResult.next()) {
-						continue;
-					}
-					int no_o_id = neworderResult.getInt(1);
-					// deleteNewOrder : d_id, w_id, no_o_id
-					_statement
-							.executeUpdate("delete from neworders where no_d_id = "
-									+ d_id
-									+ " and no_w_id = "
-									+ w_id
-									+ " and no_o_id = " + no_o_id);
 
+				// for each district, deliver the first new_order
+				Map<Integer, Integer> no_o_ids = new HashMap<Integer, Integer>();
+				// getNewOrder: no_d_id, no_w_id
+				ResultSet neworderResult = _statement
+						.executeQuery("select no_d_id, no_o_id from neworders where no_d_id >= 1 and no_d_id <= "
+								+ BenchmarkConstant.DISTRICTS_PER_WAREHOUSE
+								+ " and no_w_id = " + w_id + " limit 1");
+				while (neworderResult.next()) {
+					no_o_ids.put(neworderResult.getInt(1),
+							neworderResult.getInt(2));
+				}
+
+				// TODO: requires batch selection.
+				// get sum for each d_id in orderlines
+				Map<Integer, Double> sums = new HashMap<Integer, Double>();
+				for (int d_id : no_o_ids.keySet()) {
+					ResultSet olamountResult = _statement
+							.executeQuery("select sum(ol_amount) from orderlines where ol_o_id = "
+									+ no_o_ids.get(d_id)
+									+ " and ol_d_id = "
+									+ d_id + " and ol_w_id = " + w_id);
+					olamountResult.next();
+					sums.put(d_id, olamountResult.getDouble(1));
+				}
+
+				// TODO: requires batch selection.
+				// get customer_ids in orders
+				Map<Integer, Integer> c_ids = new HashMap<Integer, Integer>();
+				for (int d_id : no_o_ids.keySet()) {
 					// getCId: no_o_id, d_id, w_id
 					ResultSet orderResult = _statement
 							.executeQuery("select o_c_id from orders where o_id = "
-									+ no_o_id
+									+ no_o_ids.get(d_id)
 									+ " and o_d_id = "
-									+ d_id
-									+ " and o_w_id = " + w_id);
-					if (!orderResult.next()) {
-						continue;
-					}
-					int c_id = orderResult.getInt(1);
+									+ d_id + " and o_w_id = " + w_id);
+					orderResult.next();
+					c_ids.put(d_id, orderResult.getInt(1));
+					System.out.println(c_ids.get(d_id));
+				}
 
-					// sumOLAmount: no_o_id, d_id, w_id
-					ResultSet olamountResult = _statement
-							.executeQuery("select sum(ol_amount) from orderlines where ol_o_id = "
-									+ no_o_id
-									+ " and ol_d_id = "
-									+ d_id
-									+ " and ol_w_id = " + w_id);
-					olamountResult.next();
-					double sum = olamountResult.getDouble(1);
+				for (int d_id : no_o_ids.keySet()) {
+					// deleteNewOrder : d_id, w_id, no_o_id
+					_statement
+							.addBatch("delete from neworders where no_d_id = "
+									+ d_id + " and no_w_id = " + w_id
+									+ " and no_o_id = " + no_o_ids.get(d_id));
+				}
+				// _statement.executeBatch();
 
+				// update ol_delivery_d in orderlines
+				for (int d_id : no_o_ids.keySet()) {
+					_statement
+							.addBatch("update orderlines set ol_delivery_d = "
+									+ ol_delivery_d + " where ol_o_id = "
+									+ no_o_ids.get(d_id) + " and ol_d_id = "
+									+ d_id + " and ol_w_id = " + w_id);
+				}
+				// _statement.executeBatch();
+
+				// update o_carrier_id in orders
+				for (int d_id : no_o_ids.keySet()) {
 					// updateOrders : o_carrier_id, no_o_id, d_id, w_id
-					_statement
-							.executeUpdate("update orders set o_carrier_id = "
-									+ o_carrier_id + " where o_id = " + no_o_id
-									+ " and o_d_id = " + d_id
-									+ " and o_w_id = " + w_id);
+					_statement.addBatch("update orders set o_carrier_id = "
+							+ o_carrier_id + " where o_id = "
+							+ no_o_ids.get(d_id) + " and o_d_id = " + d_id
+							+ " and o_w_id = " + w_id);
+				}
+				// _statement.executeBatch();
 
-					// updateOrderLine : ol_delivery_d, no_o_id, d_id, w_id
+				// updateCustomer : ol_total, c_id, d_id, w_id
+				for (int d_id : no_o_ids.keySet()) {
 					_statement
-							.executeUpdate("update orderlines set ol_delivery_d = "
-									+ ol_delivery_d
-									+ " where ol_o_id = "
-									+ no_o_id
-									+ " and ol_d_id = "
-									+ d_id
-									+ " and ol_w_id = " + w_id);
-
-					// updateCustomer : ol_total, c_id, d_id, w_id
-					_statement
-							.executeUpdate("update customers set c_balance = c_balance + "
-									+ sum
+							.addBatch("update customers set c_balance = c_balance + "
+									+ sums.get(d_id)
 									+ " where c_id = "
-									+ c_id
+									+ c_ids.get(d_id)
 									+ " and c_d_id = "
 									+ d_id
 									+ " and c_w_id = " + w_id);
+				}
+				_statement.executeBatch();
 
+				for (int d_id : no_o_ids.keySet()) {
 					String result = String
 							.format("delivery result: district_id=%d, order_id=%d, top_up=%f",
-									d_id, no_o_id, sum);
+									d_id, no_o_ids.get(d_id), sums.get(d_id));
 					_collector.emit(new Values(result));
 				}
 			}
@@ -289,34 +303,36 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				for (String tmp : fields[6].split(";")) {
 					i_qtys.add(Integer.valueOf(tmp));
 				}
-
 				boolean all_local = true;
-				List<NewOrderItemInfo> item_infos = new LinkedList<NewOrderItemInfo>();
 				for (int i = 0; i < i_ids.size(); ++i) {
 					all_local = (all_local && (w_id == i_w_ids.get(i)));
-					ResultSet itemInfoResult = _statement
-							.executeQuery("select i_price, i_name, i_data from items where i_id = "
-									+ i_ids.get(i));
-					itemInfoResult.next();
-					item_infos.add(new NewOrderItemInfo(itemInfoResult
-							.getDouble(1), itemInfoResult.getString(2),
-							itemInfoResult.getString(3)));
 				}
+				int ol_cnt = i_ids.size();
+				int o_carrier_id = BenchmarkConstant.NULL_CARRIER_ID;
+
+				// getWarehouseTaxRate
+				// warehouses -> input
 				ResultSet wTaxResult = _statement
 						.executeQuery("select w_tax from warehouses where w_id = "
 								+ w_id);
 				wTaxResult.next();
 				double w_tax = wTaxResult.getDouble(1);
+
+				// getDistrict : d_id, w_id
+				// districts -> input
 				ResultSet dTaxResult = _statement
 						.executeQuery("select d_tax, d_next_o_id from districts where d_id = "
 								+ d_id + " and d_w_id = " + w_id);
 				dTaxResult.next();
 				double d_tax = dTaxResult.getDouble(1);
 				int d_next_o_id = dTaxResult.getInt(2);
+				// incrementNextOrderId : d_next_o_id + 1, d_id, w_id
 				_statement.executeUpdate("update districts set d_next_o_id = "
 						+ (d_next_o_id + 1) + " where d_id = " + d_id
 						+ " and d_w_id = " + w_id);
 
+				// getCustomer : w_id, d_id, c_id
+				// customers -> input
 				ResultSet customerResult = _statement
 						.executeQuery("select c_discount, c_last, c_credit from customers where c_w_id = "
 								+ w_id
@@ -325,9 +341,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 								+ " and c_id= " + c_id);
 				customerResult.next();
 				double c_discount = customerResult.getDouble(1);
-
-				int ol_cnt = i_ids.size();
-				int o_carrier_id = BenchmarkConstant.NULL_CARRIER_ID;
 
 				_ordersInsertion.setInt(1, d_next_o_id);
 				_ordersInsertion.setInt(2, c_id);
@@ -345,18 +358,18 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				_newordersInsertion.setInt(3, d_next_o_id);
 				_newordersInsertion.executeUpdate();
 
-				double total = 0;
+				// TODO: requires batch selection.
+				List<InnerStockState> innerStocks = new LinkedList<InnerStockState>();
 				for (int i = 0; i < i_ids.size(); ++i) {
-					int ol_number = i + 1;
 					int ol_supply_w_id = i_w_ids.get(i);
 					int ol_i_id = i_ids.get(i);
 					int ol_quantity = i_qtys.get(i);
-					NewOrderItemInfo tmpItemInfo = item_infos.get(i);
-
+					// getStockInfo : ol_i_id, ol_supply_w_id
+					// stocks -> input
 					String d_id_str = String.format("%02d", d_id);
 					// getStockInfo : ol_i_id, ol_supply_w_id
 					ResultSet stockResult = _statement
-							.executeQuery("select s_quantity, s_data, s_ytd, s_order_cnt, s_remote_cnt, s_dist_"
+							.executeQuery("select s_quantity, s_ytd, s_order_cnt, s_remote_cnt, s_dist_"
 									+ d_id_str
 									+ " from stocks where s_i_id = "
 									+ ol_i_id
@@ -364,10 +377,10 @@ public class StateMachineDBBolt extends BaseRichBolt {
 									+ ol_supply_w_id);
 					stockResult.next();
 					int s_quantity = stockResult.getInt(1);
-					int s_ytd = stockResult.getInt(3);
-					int s_order_cnt = stockResult.getInt(4);
-					int s_remote_cnt = stockResult.getInt(5);
-					String s_dist = stockResult.getString(6);
+					int s_ytd = stockResult.getInt(2);
+					int s_order_cnt = stockResult.getInt(3);
+					int s_remote_cnt = stockResult.getInt(4);
+					String s_dist = stockResult.getString(5);
 					s_ytd += ol_quantity;
 					if (s_quantity >= ol_quantity + 10) {
 						s_quantity = s_quantity - ol_quantity;
@@ -378,16 +391,40 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					if (ol_supply_w_id != w_id) {
 						s_remote_cnt += 1;
 					}
+					innerStocks.add(new InnerStockState(s_quantity, s_ytd,
+							s_order_cnt, s_remote_cnt, s_dist));
+				}
+				for (int i = 0; i < i_ids.size(); ++i) {
+					int ol_supply_w_id = i_w_ids.get(i);
+					int ol_i_id = i_ids.get(i);
+					InnerStockState innerStock = innerStocks.get(i);
 					_statement.executeUpdate("update stocks set s_quantity = "
-							+ s_quantity + ", s_ytd = " + s_ytd
-							+ ", s_order_cnt = " + s_order_cnt
-							+ ", s_remote_cnt = " + s_remote_cnt
+							+ innerStock.s_quantity + ", s_ytd = " + innerStock.s_ytd
+							+ ", s_order_cnt = " + innerStock.s_order_cnt
+							+ ", s_remote_cnt = " + innerStock.s_remote_cnt
 							+ " where s_i_id = " + ol_i_id + " and s_w_id = "
 							+ ol_supply_w_id);
-					
-					double ol_amount = ol_quantity * tmpItemInfo._i_price;
-					total += ol_amount;
+				}
 
+				double total = 0;
+				List<Double> ol_amounts = new LinkedList<Double>();
+				for (int i = 0; i < i_ids.size(); ++i) {
+					int ol_quantity = i_qtys.get(i);
+					ResultSet itemResult = _statement
+							.executeQuery("select i_price from items where i_id = "
+									+ i_ids.get(i));
+					itemResult.next();
+					double ol_amount = ol_quantity * itemResult.getDouble(1);
+					ol_amounts.add(ol_amount);
+					total += ol_amount;
+				}
+				total *= (1 - c_discount) * (1 + w_tax + d_tax);
+
+				for (int i = 0; i < i_ids.size(); ++i) {
+					int ol_number = i + 1;
+					int ol_i_id = i_ids.get(i);
+					int ol_supply_w_id = i_w_ids.get(i);
+					int ol_quantity = i_qtys.get(i);
 					// create new order line
 					_orderlinesInsertion.setInt(1, d_next_o_id);
 					_orderlinesInsertion.setInt(2, d_id);
@@ -397,11 +434,13 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					_orderlinesInsertion.setInt(6, ol_supply_w_id);
 					_orderlinesInsertion.setLong(7, o_entry_d);
 					_orderlinesInsertion.setInt(8, ol_quantity);
-					_orderlinesInsertion.setDouble(9, ol_amount);
-					_orderlinesInsertion.setString(10, s_dist);
-					_orderlinesInsertion.executeUpdate();
+					_orderlinesInsertion.setDouble(9, ol_amounts.get(i));
+					_orderlinesInsertion.setString(10, innerStocks.get(i).s_dist);
+					_orderlinesInsertion.addBatch();
 				}
-				total *= (1 - c_discount) * (1 + w_tax + d_tax);
+				_orderlinesInsertion.executeBatch();
+
+				// output -> customers, warehouses, districts
 				String result = String
 						.format("new_order result: customer_id= %d, warehouse_tax=%f, district_tax=%f, order_id=%d, total=%f",
 								c_id, w_tax, d_tax, d_next_o_id, total);
@@ -413,7 +452,6 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				int w_id = Integer.valueOf(fields[0]);
 				int d_id = Integer.valueOf(fields[1]);
 				int c_id = Integer.valueOf(fields[2]);
-				String c_last = fields[3];
 				InnerCustomerState customerState = null;
 				if (c_id != -1) {
 					ResultSet customerResult = _statement
@@ -433,7 +471,7 @@ public class StateMachineDBBolt extends BaseRichBolt {
 									+ w_id
 									+ " and c_d_id = "
 									+ d_id
-									+ " and c_last = '" + c_last + "'");
+									+ " and c_last = '" + fields[3] + "'");
 					List<InnerCustomerState> customerList = new LinkedList<InnerCustomerState>();
 					while (customerResult.next()) {
 						customerList.add(new InnerCustomerState(customerResult
@@ -441,7 +479,9 @@ public class StateMachineDBBolt extends BaseRichBolt {
 					}
 					customerState = customerList
 							.get((customerList.size() - 1) / 2);
+					c_id = customerState.c_id;
 				}
+
 				// getLastOrder : w_id, d_id, c_id
 				ResultSet lastorderResult = _statement
 						.executeQuery("select o_id from orders where o_w_id = "
@@ -531,18 +571,17 @@ public class StateMachineDBBolt extends BaseRichBolt {
 				districtResult.next();
 				String d_name = districtResult.getString(1);
 
-				_statement
-						.executeUpdate("update warehouses set w_ytd = w_ytd + "
-								+ h_amount + " where w_id = " + w_id);
-				_statement
-						.executeUpdate("update districts set d_ytd = d_ytd + "
-								+ h_amount + " where d_w_id =" + w_id
-								+ " and d_id =" + d_id);
-				_statement.executeUpdate("update customers set c_balance = "
+				_statement.addBatch("update warehouses set w_ytd = w_ytd + "
+						+ h_amount + " where w_id = " + w_id);
+				_statement.addBatch("update districts set d_ytd = d_ytd + "
+						+ h_amount + " where d_w_id =" + w_id + " and d_id ="
+						+ d_id);
+				_statement.addBatch("update customers set c_balance = "
 						+ c_balance + ", c_ytd_payment = " + c_ytd_payment
 						+ ", c_payment_cnt = " + c_payment_cnt
 						+ " where c_w_id = " + w_id + " and c_d_id = " + d_id
 						+ " and c_id = " + c_id);
+				_statement.executeBatch();
 
 				String h_data = BenchmarkRandom.getAstring(
 						BenchmarkConstant.MIN_DATA, BenchmarkConstant.MAX_DATA);

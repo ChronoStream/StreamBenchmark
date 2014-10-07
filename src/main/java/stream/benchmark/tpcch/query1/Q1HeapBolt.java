@@ -115,8 +115,7 @@ public class Q1HeapBolt extends BaseRichBolt {
 
 		else if (streamname == "DELIVERY") {
 			int w_id = Integer.valueOf(fields[0]);
-			// long ol_delivery_d = Long.valueOf(fields[2]);
-			long ol_delivery_d = System.currentTimeMillis();
+			long ol_delivery_d = Long.valueOf(fields[2]);
 			// for each district, deliver the first new_order
 			for (int d_id = 1; d_id < BenchmarkConstant.DISTRICTS_PER_WAREHOUSE + 1; ++d_id) {
 				// /////////////////////////////////////////////////////////////
@@ -136,8 +135,6 @@ public class Q1HeapBolt extends BaseRichBolt {
 				}
 				++_numWriteOrderlines;
 			}
-			// event count
-			_numEventCount += 1;
 		}
 
 		else if (streamname == "NEW_ORDER") {
@@ -196,12 +193,12 @@ public class Q1HeapBolt extends BaseRichBolt {
 			_newordersIndex.get(w_id).get(d_id).add(d_next_o_id);
 			++_numWriteNeworders;
 
-			// event count
-			++_numEventCount;
 			_currentOrderCount = d_next_o_id;
 		}
 
 		if (streamname == "DELIVERY" || streamname == "NEW_ORDER") {
+			// event count
+			++_numEventCount;
 			if (_isFirstQuery) {
 				long elapsedTime = System.currentTimeMillis() - _beginTime;
 				System.out.println("load database elapsed time = "
@@ -260,6 +257,11 @@ public class Q1HeapBolt extends BaseRichBolt {
 						sb.append(orderline_num);
 						_collector.emit(new Values(sb.toString()));
 						sb.setLength(0);
+						
+//						_collector.emit(new Values(warehouse, district,
+//								quantity_sum, quantity_sum / orderline_num,
+//								amount_sum, amount_sum / orderline_num,
+//								orderline_num));
 					}
 				}
 				++_numReadOrderlines;

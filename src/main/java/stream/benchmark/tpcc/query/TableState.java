@@ -2,7 +2,9 @@ package stream.benchmark.tpcc.query;
 
 import java.util.List;
 
+
 public class TableState {
+	
 	// w_id smallint, w_name varchar(16),
 	// w_street_1 varchar(32), w_street_2 varchar(32), w_city varchar(32),
 	// w_state varchar(2), w_zip varchar(9),

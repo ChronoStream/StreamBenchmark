@@ -11,8 +11,8 @@ public class DriverMain {
 	public static void main(String[] args) {
 		TopologyBuilder builder = new TopologyBuilder();
 		builder.setSpout("spout", new TpccSpout(10, 1));
-		BoltDeclarer bolt = builder.setBolt("bolt", new StateMachineBolt());
-		
+		BoltDeclarer bolt = builder.setBolt("bolt", new StateMachineFissionMysqlBolt());
+
 		bolt.globalGrouping("spout", "item");
 		bolt.globalGrouping("spout", "warehouse");
 		bolt.globalGrouping("spout", "district");
@@ -22,7 +22,7 @@ public class DriverMain {
 		bolt.globalGrouping("spout", "neworder");
 		bolt.globalGrouping("spout", "orderline");
 		bolt.globalGrouping("spout", "history");
-		
+
 		bolt.globalGrouping("spout", "DELIVERY");
 		bolt.globalGrouping("spout", "NEW_ORDER");
 		bolt.globalGrouping("spout", "ORDER_STATUS");
@@ -30,8 +30,8 @@ public class DriverMain {
 		bolt.globalGrouping("spout", "STOCK_LEVEL");
 
 		builder.setBolt("sink", new StateMachineSink()).globalGrouping("bolt");
-		
-		Config conf=new Config();
+
+		Config conf = new Config();
 		conf.setDebug(false);
 		LocalCluster cluster = new LocalCluster();
 		cluster.submitTopology("tpcc", conf, builder.createTopology());
